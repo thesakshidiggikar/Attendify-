@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../bloc/dashboard_bloc.dart';
-import '../../data/repositories/employee_registration_repository.dart';
+import '../../domain/entities/employee.dart';
 
-class EmployeeDashboardScreen extends StatefulWidget {
+class EmployeeDashboardPage extends StatefulWidget {
   @override
-  State<EmployeeDashboardScreen> createState() => _EmployeeDashboardScreenState();
+  State<EmployeeDashboardPage> createState() => _EmployeeDashboardPageState();
 }
 
-class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
+class _EmployeeDashboardPageState extends State<EmployeeDashboardPage> {
   int selectedIndex = 0;
   bool _employeesLoaded = false;
 
@@ -324,29 +324,38 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
                           ),
                           const SizedBox(height: 32),
                           // Profile Summary
-                          Card(
-                            child: Padding(
-                              padding: const EdgeInsets.all(24.0),
-                              child: Row(
-                                children: [
-                                  CircleAvatar(radius: 40, child: Icon(Icons.person, size: 48)),
-                                  const SizedBox(width: 24),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text('Employee Name', style: Theme.of(context).textTheme.titleLarge),
-                                        const SizedBox(height: 8),
-                                        Text('ID: EMP001'),
-                                        const SizedBox(height: 8),
-                                        Text('Attendance: 95%'),
-                                        Text('Present: 20  Absent: 1  Late: 2'),
-                                      ],
-                                    ),
+                          BlocBuilder<AuthBloc, AuthState>(
+                            builder: (context, state) {
+                              String userName = 'Employee Name';
+                              String userId = 'EMP001';
+                              if (state is AuthAuthenticated) {
+                                userName = state.user.name;
+                                userId = state.user.id;
+                              }
+                              return Card(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(24.0),
+                                  child: Row(
+                                    children: [
+                                      const CircleAvatar(radius: 40, child: Icon(Icons.person, size: 48)),
+                                      const SizedBox(width: 24),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(userName, style: Theme.of(context).textTheme.titleLarge),
+                                            const SizedBox(height: 8),
+                                            Text('ID: $userId'),
+                                            const SizedBox(height: 8),
+                                            const Text('Individual Stats Integration Pending', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                            ),
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),

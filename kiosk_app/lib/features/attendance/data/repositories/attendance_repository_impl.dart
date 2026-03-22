@@ -15,7 +15,8 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
     return remoteDataSource.uploadAttendanceImage(imageBytes);
   }
 
-  Future<List<Map<String, dynamic>>> getRecentAttendance() {
-    return remoteDataSource.fetchRecentAttendance();
+  @override
+  Future<List<Map<String, dynamic>>> getRecentAttendance({String? userId}) {
+    return remoteDataSource.fetchRecentAttendance(userId: userId);
   }
-} 
+}

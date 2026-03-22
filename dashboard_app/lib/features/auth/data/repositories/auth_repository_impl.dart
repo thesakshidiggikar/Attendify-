@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart'; // Add this line
 import '../../domain/repositories/auth_repository.dart';
 import '../models/user_model.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
-  static const String baseUrl = 'https://wny1io6xre.execute-api.ap-south-1.amazonaws.com/dev';
+  // Production Endpoint: Should be retrieved from Environment Variables
+  String get baseUrl => dotenv.env['API_BASE_URL'] ?? 'https://wny1io6xre.execute-api.ap-south-1.amazonaws.com/dev';
   
   AuthRepositoryImpl();
 
@@ -41,13 +43,18 @@ class AuthRepositoryImpl implements AuthRepository {
 
     final responseData = jsonDecode(response.body);
     
-    // Handle nested JSON in 'body' field (same pattern as registration)
+    // Handle nested JSON in 'body' field
     dynamic bodyData;
     if (responseData.containsKey('body')) {
       final body = responseData['body'];
       bodyData = body is String ? jsonDecode(body) : body;
     } else {
       bodyData = responseData;
+    }
+
+    // Check for NEW_PASSWORD_REQUIRED challenge
+    if (bodyData['challengeName'] == 'NEW_PASSWORD_REQUIRED') {
+      throw Exception('NEW_PASSWORD_REQUIRED');
     }
     
     final accessToken = bodyData['accessToken'] ?? '';
@@ -72,6 +79,25 @@ class AuthRepositoryImpl implements AuthRepository {
       role: userRole,
       token: accessToken,
     );
+  }
+
+  Future<UserModel> confirmNewPassword(String username, String newPassword) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/confirm-new-password'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'username': username,
+        'new_password': newPassword,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update password: ${response.body}');
+    }
+
+    // Optionally login the user immediately after success
+    final data = jsonDecode(response.body);
+    return login(username, newPassword);
   }
 
   @override

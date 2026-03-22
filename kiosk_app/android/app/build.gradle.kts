@@ -7,7 +7,8 @@ plugins {
 
 android {
     namespace = "com.example.kiosk_app"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 35
+    buildToolsVersion = "34.0.0"
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

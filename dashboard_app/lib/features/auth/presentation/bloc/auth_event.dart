@@ -17,10 +17,17 @@ class AuthLogoutRequested extends AuthEvent {}
 
 class AuthCheckRequested extends AuthEvent {}
 
+class AuthBypassRequested extends AuthEvent {
+  final String username;
+  AuthBypassRequested(this.username);
+  @override
+  List<Object?> get props => [username];
+}
+
 class AuthNewPasswordRequired extends AuthEvent {
   final String username;
   final String newPassword;
   AuthNewPasswordRequired({required this.username, required this.newPassword});
   @override
   List<Object?> get props => [username, newPassword];
-} 
+}

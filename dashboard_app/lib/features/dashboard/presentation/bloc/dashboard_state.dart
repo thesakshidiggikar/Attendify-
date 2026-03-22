@@ -1,5 +1,7 @@
 part of 'dashboard_bloc.dart';
 
+
+
 abstract class DashboardState extends Equatable {
   @override
   List<Object?> get props => [];
@@ -18,6 +20,29 @@ class DashboardError extends DashboardState {
   @override
   List<Object?> get props => [message];
 }
+
+class DashboardStatsLoadInProgress extends DashboardState {}
+class DashboardStatsLoadSuccess extends DashboardState {
+  final int totalStudents;
+  final int presentToday;
+  final int absentToday;
+  final List<Employee> employees;
+  DashboardStatsLoadSuccess({
+    required this.totalStudents, 
+    required this.presentToday, 
+    required this.absentToday,
+    required this.employees,
+  });
+  @override
+  List<Object?> get props => [totalStudents, presentToday, absentToday, employees];
+}
+class DashboardStatsLoadFailure extends DashboardState {
+  final String error;
+  DashboardStatsLoadFailure(this.error);
+  @override
+  List<Object?> get props => [error];
+}
+
 class RegisterEmployeeInProgress extends DashboardState {}
 class RegisterEmployeeSuccess extends DashboardState {}
 class RegisterEmployeeFailure extends DashboardState {
@@ -26,6 +51,16 @@ class RegisterEmployeeFailure extends DashboardState {
   @override
   List<Object?> get props => [error];
 }
+
+class ManualAttendanceSubmitInProgress extends DashboardState {}
+class ManualAttendanceSubmitSuccess extends DashboardState {}
+class ManualAttendanceSubmitFailure extends DashboardState {
+  final String error;
+  ManualAttendanceSubmitFailure(this.error);
+  @override
+  List<Object?> get props => [error];
+}
+
 class EmployeesLoadInProgress extends DashboardState {}
 class EmployeesLoadSuccess extends DashboardState {
   final List<Employee> employees;

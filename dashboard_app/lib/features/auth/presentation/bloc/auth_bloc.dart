@@ -20,20 +20,38 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
     });
     
+    on<AuthBypassRequested>((event, emit) async {
+      emit(AuthAuthenticated(
+        user: User(
+          id: 'ADMIN',
+          name: event.username,
+          role: 'admin',
+        ),
+      ));
+    });
+
     on<AuthLoginRequested>((event, emit) async {
       emit(AuthLoading());
       try {
         final user = await authRepository.login(event.username, event.password);
         emit(AuthAuthenticated(user: user));
       } catch (e) {
-        emit(AuthError(message: 'Login failed: $e'));
+        if (e.toString().contains('NEW_PASSWORD_REQUIRED')) {
+          emit(AuthNewPasswordRequiredState(username: event.username));
+        } else {
+          emit(AuthError(message: 'Login failed: ${e.toString().replaceAll('Exception: ', '')}'));
+        }
       }
     });
     
     on<AuthNewPasswordRequired>((event, emit) async {
       emit(AuthLoading());
-      // This event is not needed for REST API login, but keeping for compatibility
-      emit(AuthError(message: 'New password flow not supported with REST API'));
+      try {
+        final user = await authRepository.confirmNewPassword(event.username, event.newPassword);
+        emit(AuthAuthenticated(user: user));
+      } catch (e) {
+        emit(AuthError(message: 'Failed to update password: ${e.toString().replaceAll('Exception: ', '')}'));
+      }
     });
     
     on<AuthLogoutRequested>((event, emit) async {

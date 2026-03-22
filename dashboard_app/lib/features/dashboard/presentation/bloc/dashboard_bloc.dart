@@ -1,23 +1,76 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import '../../data/repositories/employee_registration_repository.dart';
+import '../../domain/entities/employee.dart';
+import '../../domain/repositories/dashboard_repository.dart';
 
 part 'dashboard_event.dart';
 part 'dashboard_state.dart';
 
 class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
-  final EmployeeRegistrationRepository registrationRepository;
+  final DashboardRepository dashboardRepository;
   List<Employee> _allEmployees = [];
 
-  DashboardBloc({required this.registrationRepository}) : super(DashboardInitial()) {
+  DashboardBloc({required this.dashboardRepository}) : super(DashboardInitial()) {
+    on<FetchDashboardStatsRequested>((event, emit) async {
+      emit(DashboardStatsLoadInProgress());
+      try {
+        final employees = await dashboardRepository.fetchAllEmployees();
+        int total = employees.length;
+        
+        int present = 0;
+        int absent = 0;
+        try {
+          final analytics = await dashboardRepository.fetchAttendanceAnalytics();
+          print('DEBUG: Analytics map: $analytics');
+          // Map to the specific keys found in your Lambda response: total_records, present_count, absent_count
+          if (analytics['present_count'] != null) {
+            present = (analytics['present_count'] as num).toInt();
+          }
+          if (analytics['absent_count'] != null) {
+            absent = (analytics['absent_count'] as num).toInt();
+          }
+          print('DEBUG: Parsed present: $present, absent: $absent');
+        } catch (e) {
+          print('DEBUG: Analytics fetch/parse error: $e');
+          // Keep 0 if analytics API fails or isn't fully structured yet
+        }
+        
+        emit(DashboardStatsLoadSuccess(
+          totalStudents: total, 
+          presentToday: present, 
+          absentToday: absent,
+          employees: employees,
+        ));
+      } catch (e) {
+        emit(DashboardStatsLoadFailure(e.toString()));
+      }
+    });
+
+    on<SubmitManualAttendanceRequested>((event, emit) async {
+      emit(ManualAttendanceSubmitInProgress());
+      try {
+        await dashboardRepository.submitManualAttendance(
+          userId: event.userId,
+          date: event.date,
+          time: event.time,
+          status: event.status,
+        );
+        emit(ManualAttendanceSubmitSuccess());
+      } catch (e) {
+        emit(ManualAttendanceSubmitFailure(e.toString()));
+      }
+    });
+
     on<RegisterEmployeeRequested>((event, emit) async {
       emit(RegisterEmployeeInProgress());
       try {
-        await registrationRepository.registerEmployee(
-          username: event.username,
+        await dashboardRepository.registerEmployee(
+          userId: event.userId,
+          fullName: event.fullName,
           email: event.email,
           password: event.password,
           profile: event.profile,
+          department: event.department,
           image: event.image,
         );
         emit(RegisterEmployeeSuccess());
@@ -29,7 +82,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     on<FetchAllEmployeesRequested>((event, emit) async {
       emit(EmployeesLoadInProgress());
       try {
-        final employees = await registrationRepository.fetchAllEmployees();
+        final employees = await dashboardRepository.fetchAllEmployees();
         _allEmployees = employees;
         emit(EmployeesLoadSuccess(employees));
       } catch (e) {
@@ -51,7 +104,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       if (currentState is EmployeesLoadSuccess) {
         emit(EmployeeDeleteInProgress(currentState.employees));
         try {
-          await registrationRepository.deleteEmployee(event.username);
+          await dashboardRepository.deleteEmployee(event.username);
           final updated = currentState.employees.where((e) => e.username != event.username).toList();
           _allEmployees = _allEmployees.where((e) => e.username != event.username).toList();
           emit(EmployeeDeleteSuccess(updated));

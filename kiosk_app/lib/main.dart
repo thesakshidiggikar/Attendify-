@@ -1,30 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'features/auth/presentation/bloc/auth_bloc.dart';
-import 'features/auth/presentation/pages/login_page.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'features/attendance/presentation/pages/attendance_page.dart';
-import 'package:amplify_flutter/amplify_flutter.dart';
-import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
-import 'amplifyconfiguration.dart';
-// import 'features/auth/data/datasources/auth_remote_data_source.dart';
+import 'features/auth/presentation/bloc/auth_bloc.dart';
+import 'features/auth/data/repositories/auth_repository_impl.dart';
+import 'features/auth/presentation/screens/login_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await _configureAmplify();
-  runApp(const MyApp());
-}
-
-Future<void> _configureAmplify() async {
   try {
-    if (!Amplify.isConfigured) {
-      final auth = AmplifyAuthCognito();
-      await Amplify.addPlugin(auth);
-      await Amplify.configure(amplifyconfig);
-    }
+    await dotenv.load(fileName: ".env");
   } catch (e) {
-    // Handle Amplify already configured or other errors
-    debugPrint('Amplify config error: ');
+    debugPrint("Warning: .env file not found or failed to load");
   }
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -32,13 +21,27 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'FaceAttend Kiosk',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (context) => AuthBloc(
+            authRepository: AuthRepositoryImpl(),
+          ),
+        ),
+      ],
+      child: MaterialApp(
+        title: 'FaceAttend Kiosk',
+        theme: ThemeData(
+          primarySwatch: Colors.indigo,
+          useMaterial3: true,
+        ),
+        debugShowCheckedModeBanner: false,
+        initialRoute: '/login',
+        routes: {
+          '/login': (context) => const LoginPage(),
+          '/attendance': (context) => const AttendancePage(),
+        },
       ),
-      debugShowCheckedModeBanner: false,
-      home: const AttendancePage(),
     );
   }
 }
