@@ -1,93 +1,100 @@
-# FaceAttend: AI-Powered Attendance Management System
+# FaceAttend: AI-Powered Enterprise Attendance System
 
-FaceAttend is a comprehensive attendance management solution leveraging facial recognition for seamless, secure, and automated attendance tracking. This project consists of two primary Flutter applications: a **Dashboard** for administrators and an **Attendance Kiosk** for students/employees.
+FaceAttend is a decentralized, AI-driven attendance management solution designed for institutional scalability. Leveraging real-time on-device facial recognition and a serverless cloud backend, it provides a seamless experience for both administrators and employees/students.
 
----
+## System Architecture
 
-## 📂 Project Structure
+The project follows a distributed architecture with a clear separation between edge-processing (Kiosk) and centralized management (Dashboard).
 
-```text
-FaceAttend-Flutter/
-├── dashboard_app/             # Admin & Management Portal (Flutter Web)
-│   ├── lib/
-│   │   ├── core/              # Constants, Theme, UI Utils
-│   │   ├── features/          # Feature-based modular architecture (BLoC)
-│   │   │   ├── auth/          # Authentication & Role Management
-│   │   │   └── dashboard/     # Employee management, Stats & Analytics
-│   │   └── di/                # Dependency Injection (GetIt)
-│   └── web/                   # Web-specific configurations
-├── kiosk_app/                 # Attendance Entry Portal (Flutter Web/Tablet)
-│   ├── lib/
-│   │   ├── features/
-│   │   │   ├── attendance/    # Facial Recognition & Attendance Submission
-│   │   │   └── auth/          # Student/Employee Portal Login
-│   │   └── shared/            # Shared UI components
-├── scripts/                   # Python utility & test scripts
-└── RUN_INSTRUCTIONS.md        # Detailed setup and run guide
+```mermaid
+graph TD
+    subgraph "Edge Layer (Kiosk App)"
+        A[Camera Feed] --> B[Google ML Kit Detection]
+        B --> C[Face Crop/Preprocessing]
+        C --> D[AuthBloc State Management]
+    end
+
+    subgraph "Cloud Layer (AWS)"
+        D --> E[API Gateway]
+        E --> F[Lambda: Face Rekognition]
+        E --> G[Lambda: Attendance Analytics]
+        F --> H[DynamoDB: Records]
+        G --> H
+    end
+
+    subgraph "Management Layer (Dashboard App)"
+        I[Admin UI] --> J[DashboardBloc]
+        J --> E
+    end
 ```
 
----
+### Edge Processing (Kiosk)
+- **Face Detection**: Local, on-device detection using Google ML Kit to minimize latency and bandwidth.
+- **Privacy First**: Sensitive biometric data is processed at the edge before being securely transmitted to the cloud.
 
-## 🚀 Getting Started
+### Serverless Infrastructure
+- **Compute**: Event-driven AWS Lambda functions handle authentication, identity matching, and analytics.
+- **Storage**: Highly available DynamoDB for structured records and S3 for secure encrypted image storage.
+- **API Management**: AWS API Gateway provides a managed entry point with role-based access control.
+
+## Engineering Standards
+
+The codebase is engineered with high-level design patterns to ensure maintainability and testability at scale:
+
+1.  **Clean Architecture**: Structured into Domain, Data, and Presentation layers to decouple business logic from external dependencies (frameworks, APIs).
+2.  **BLoC Pattern**: Uni-directional data flow using Reactive Programming for robust state management.
+3.  **Dependency Injection**: Decoupled service construction using the `GetIt` service locator.
+4.  **Modular Organization**: Feature-based folder structure for independent scaling of modules (Auth, Attendance, Analytics).
+
+## Technical Stack
+
+- **Framework**: Flutter (Cross-platform support for Web, Mobile, and Desktop)
+- **State Management**: `flutter_bloc`, `equatable`
+- **Networking**: `http`, `flutter_dotenv`
+- **Cloud Backend**: AWS (Lambda, API Gateway, S3, Cognito)
+- **ML Engine**: Google ML Kit (Edge Detection) + AWS Rekognition (Cloud Identification)
+
+## Core Components
+
+### 1. Dashboard Application
+A comprehensive administrative portal for:
+- Real-time attendance monitoring and data visualization.
+- Employee/Student database management.
+- Automated report generation and analytics.
+
+### 2. Kiosk Application
+A high-performance attendance entry station featuring:
+- Live holographic scanner interface.
+- Instant identity verification using face-matching algorithms.
+- Offline-first design principles for resilience.
+
+## Getting Started
 
 ### Prerequisites
+- Flutter SDK (latest stable)
+- Git
+- AWS Account (configured for the serverless backend)
 
-- **Flutter SDK**: [Install Flutter](https://flutter.dev/docs/get-started/install)
-- **Git**: [Install Git](https://git-scm.com/downloads)
-- **Environment Variables**: Ensure you have a `.env` file in both `dashboard_app/` and `kiosk_app/` with the required `API_BASE_URL`.
-
-### Installation
-
+### Setup
 1.  **Clone the Repository**:
     ```bash
-    git clone https://github.com/the-shreyashmaurya/FaceAttend-Flutter.git
-    cd FaceAttend-Flutter
+    git clone https://github.com/thesakshidiggikar/Attendify-.git
+    cd Attendify-
+    ```
+2.  **Configure Environment**:
+    Create a `.env` file in both `dashboard_app/` and `kiosk_app/` based on the provided `.env.example` templates.
+3.  **Install Dependencies**:
+    ```bash
+    flutter pub get
     ```
 
-2.  **Environment Setup**:
-    *Copies of `.env.example` should be renamed to `.env` and populated with your AWS API endpoint.*
+## Development & Testing
+Comprehensive test scripts are provided in the `/scripts` directory to verify API connectivity and logic independently of the UI.
+
+- `test_login.py`: Validates authentication workflows.
+- `test_stats.py`: Verifies real-time analytics aggregation.
+- `test_get_employees.py`: Tests database retrieval latency.
 
 ---
-
-## 🛠 Running the Applications
-
-### 1. Dashboard Portal
-Used for managing employees, viewing analytics, and monitoring real-time attendance.
-
-```powershell
-cd dashboard_app
-flutter run -d chrome --web-browser-flag "--disable-web-security"
-```
-
-### 2. Kiosk App
-Used by students/employees to mark their attendance via facial recognition.
-
-```powershell
-cd kiosk_app
-flutter run -d chrome --web-browser-flag "--disable-web-security"
-```
-
-> **Note**: For development, the default credentials are `admin` / `admin`.
-
----
-
-## 🧪 Testing & Debugging
-
-We have included several Python scripts in the root directory for testing individual API endpoints:
-- `test_stats.py`: Verifies today's attendance counts.
-- `test_login.py`: Tests the authentication service.
-- `test_get_employees.py`: Fetches the current employee database.
-
----
-
-## 📝 Recent Improvements
-
-- **Real-time Stats**: Connected dashboard cards directly to AWS Lambda attendance analytics.
-- **Dynamic UI**: Integrated `AuthBloc` to display actual user names and roles across the app.
-- **Robust Parsing**: Enhanced data handling for numeric attendance counts from the backend.
-- **Security Bypass**: Implemented BLoC-level bypass for testing in environments with restricted API access.
-
----
-
-## 👨‍💻 Contributors
-Developed for **D.Y. Patil International University (DYPIU)** projects.
+Designed for performance, security, and scalability.
+- Developed for DYPIU Projects.
