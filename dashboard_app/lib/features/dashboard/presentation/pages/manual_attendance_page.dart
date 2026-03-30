@@ -14,11 +14,19 @@ class ManualAttendancePage extends StatefulWidget {
 
 class _ManualAttendancePageState extends State<ManualAttendancePage> {
   final _formKey = GlobalKey<FormState>();
+  List<Employee> _students = []; // Local cache to prevent flickering
   String? _selectedStudent;
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _selectedTime = TimeOfDay.now();
   String _status = 'Present';
   bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Load students so they appear in the dropdown
+    context.read<DashboardBloc>().add(FetchAllEmployeesRequested());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,31 +88,47 @@ class _ManualAttendancePageState extends State<ManualAttendancePage> {
                     BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 30, offset: const Offset(0, 15)),
                   ],
                 ),
-                child: Form(
-                  key: _formKey,
+                child: BlocListener<DashboardBloc, DashboardState>(
+                  listener: (context, state) {
+                    if (state is ManualAttendanceSubmitSuccess) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Attendance marked successfully!'),
+                          backgroundColor: Colors.green,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        )
+                      );
+                    } else if (state is ManualAttendanceSubmitFailure) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: ${state.error}'), backgroundColor: Colors.red),
+                      );
+                    }
+                  },
+                  child: Form(
+                    key: _formKey,
                   child: Column(
                     children: [
                       BlocBuilder<DashboardBloc, DashboardState>(
                         builder: (context, state) {
-                          List<Employee> employees = [];
                           if (state is DashboardStatsLoadSuccess) {
-                            employees = state.employees;
+                            _students = state.employees;
                           } else if (state is EmployeesLoadSuccess) {
-                            employees = state.employees;
+                            _students = state.employees;
                           }
 
-                          // Ensure selected student exists in newly loaded array
-                          if (_selectedStudent != null && !employees.any((e) => e.username == _selectedStudent)) {
-                             _selectedStudent = null;
+                          // AUTO-SELECT: If nothing is selected yet, select the first student automatically
+                          if (_selectedStudent == null && _students.isNotEmpty) {
+                            _selectedStudent = _students.first.cognitoUserId;
                           }
 
                           return DropdownButtonFormField<String>(
                             decoration: _buildInputDecoration('Select Student', Icons.person_search_rounded),
                             dropdownColor: Colors.white,
                             value: _selectedStudent,
-                            hint: Text(employees.isEmpty ? 'Loading students...' : 'Choose a student'),
-                            items: employees.map((val) => DropdownMenuItem(value: val.cognitoUserId, child: Text(val.username.isNotEmpty ? val.username : 'Unknown (No Name)'))).toList(),
-                            onChanged: employees.isEmpty ? null : (val) => setState(() => _selectedStudent = val),
+                            hint: Text(_students.isEmpty ? 'Loading students...' : 'Choose a student'),
+                            items: _students.map((val) => DropdownMenuItem(value: val.cognitoUserId, child: Text(val.username.isNotEmpty ? val.username : 'Unknown (No Name)'))).toList(),
+                            onChanged: _students.isEmpty ? null : (val) => setState(() => _selectedStudent = val),
                             validator: (val) => val == null ? 'Selection required' : null,
                           );
                         },
@@ -187,13 +211,23 @@ class _ManualAttendancePageState extends State<ManualAttendancePage> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                           ),
                           onPressed: _isSubmitting ? null : () {
-                            if (_formKey.currentState!.validate() && _selectedStudent != null) {
+                            if (_selectedStudent == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Please select a student first'), backgroundColor: Colors.orangeAccent),
+                              );
+                              return;
+                            }
+                            // NEW: Adding immediate UI feedback confirming the ID being sent
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Submitting attendance for ID: $_selectedStudent...'), duration: const Duration(seconds: 1)),
+                            );
+                            if (_formKey.currentState!.validate()) {
                               context.read<DashboardBloc>().add(
                                 SubmitManualAttendanceRequested(
                                   userId: _selectedStudent!,
                                   date: _selectedDate.toLocal().toString().split(' ')[0],
                                   time: _selectedTime.format(context),
-                                  status: _status.toLowerCase(), // Send lowercase 'present', 'absent' etc to match AWS enum
+                                  status: _status.toLowerCase(),
                                 )
                               );
                             }
@@ -206,6 +240,7 @@ class _ManualAttendancePageState extends State<ManualAttendancePage> {
                     ],
                   ),
                 ),
+              ),
               ),
             ],
           ),

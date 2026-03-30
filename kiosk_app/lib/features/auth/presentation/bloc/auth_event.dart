@@ -6,27 +6,17 @@ abstract class AuthEvent extends Equatable {
   List<Object> get props => [];
 }
 
-class AuthLoginRequested extends AuthEvent {
-  final String username;
-  final String password;
-  const AuthLoginRequested(this.username, this.password);
+/// Admin activates this phone as a kiosk machine
+class MachineLoginRequested extends AuthEvent {
+  final String machineId;
+  final String adminPassword;
+  const MachineLoginRequested(this.machineId, this.adminPassword);
   @override
-  List<Object> get props => [username, password];
+  List<Object> get props => [machineId, adminPassword];
 }
 
-class AuthLogoutRequested extends AuthEvent {}
+/// Check if machine is already activated on app start
+class CheckMachineStatus extends AuthEvent {}
 
-class AuthBypassRequested extends AuthEvent {
-  final String username;
-  const AuthBypassRequested(this.username);
-  @override
-  List<Object> get props => [username];
-}
-
-class AuthNewPasswordRequired extends AuthEvent {
-  final String username;
-  final String newPassword;
-  const AuthNewPasswordRequired({required this.username, required this.newPassword});
-  @override
-  List<Object> get props => [username, newPassword];
-}
+/// Deactivate this kiosk machine
+class MachineLogoutRequested extends AuthEvent {}

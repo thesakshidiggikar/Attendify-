@@ -24,18 +24,14 @@ class DashboardRepositoryImpl implements DashboardRepository {
     final imageBase64 = base64Encode(imageBytes);
 
     final registerResp = await http.post(
-      Uri.parse('$apiBaseUrl/register-user'),
+      Uri.parse('$apiBaseUrl/user-service'),
       headers: {
         'Content-Type': 'application/json',
       },
       body: jsonEncode({
-        'user_id': userId,
         'name': fullName,
-        'email': email,
-        'password': password,
-        'profile': profile,
         'department': department,
-        'image_base64': imageBase64,
+        'image': imageBase64, // Lambda expects 'image' key
       }),
     );
 
@@ -44,7 +40,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
     }
     
     final registerData = jsonDecode(registerResp.body);
-    return registerData['FaceId'] ?? registerData['username'] ?? 'Success';
+    return registerData['user_id'] ?? 'Success';
   }
 
   @override
@@ -104,6 +100,8 @@ class DashboardRepositoryImpl implements DashboardRepository {
     required String time,
     required String status,
   }) async {
+    final timestamp = DateTime.now().toIso8601String().split('.')[0]; // Clean format: 2026-03-29T14:28:24
+    
     final resp = await http.post(
       Uri.parse('$apiBaseUrl/manual-attendance'),
       headers: {
@@ -111,10 +109,10 @@ class DashboardRepositoryImpl implements DashboardRepository {
       },
       body: jsonEncode({
         'user_id': userId,
-        'date': date,
-        'time': time,
+        'timestamp': timestamp, 
         'status': status,
-        'entry_type': 'manual',
+        'device': 'admin',
+        'type': 'manual',
       }),
     );
 
@@ -153,13 +151,13 @@ class DashboardRepositoryImpl implements DashboardRepository {
   }
 
   @override
-  Future<void> deleteEmployee(String username) async {
+  Future<void> deleteEmployee(String userId) async {
     final resp = await http.post(
       Uri.parse('$apiBaseUrl/delete-user'),
       headers: {
         'Content-Type': 'application/json',
       },
-      body: jsonEncode({'username': username}),
+      body: jsonEncode({'username': userId}), // The Lambda uses 'username' key for the 'user_id'
     );
     if (resp.statusCode != 200) {
       throw Exception('Failed to delete user: ${resp.body}');

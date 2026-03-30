@@ -101,17 +101,39 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
 
     on<DeleteEmployeeRequested>((event, emit) async {
       final currentState = state;
-      if (currentState is EmployeesLoadSuccess) {
-        emit(EmployeeDeleteInProgress(currentState.employees));
+      List<Employee> currentEmployees = [];
+      int currentTotal = 0;
+      int currentPresent = 0;
+      int currentAbsent = 0;
+
+      if (currentState is DashboardStatsLoadSuccess) {
+        currentEmployees = currentState.employees;
+        currentTotal = currentState.totalStudents;
+        currentPresent = currentState.presentToday;
+        currentAbsent = currentState.absentToday;
+      } else if (currentState is EmployeesLoadSuccess) {
+        currentEmployees = currentState.employees;
+        currentTotal = currentEmployees.length;
+      }
+
+      if (currentEmployees.isNotEmpty) {
+        emit(EmployeeDeleteInProgress(currentEmployees));
         try {
           await dashboardRepository.deleteEmployee(event.username);
-          final updated = currentState.employees.where((e) => e.username != event.username).toList();
-          _allEmployees = _allEmployees.where((e) => e.username != event.username).toList();
+          final updated = currentEmployees.where((e) => e.cognitoUserId != event.username).toList();
+          _allEmployees = _allEmployees.where((e) => e.cognitoUserId != event.username).toList();
+          
           emit(EmployeeDeleteSuccess(updated));
-          emit(EmployeesLoadSuccess(updated));
+          // Emit DashboardStatsLoadSuccess to update the Overview page counts immediately
+          emit(DashboardStatsLoadSuccess(
+            totalStudents: updated.length,
+            presentToday: currentPresent,
+            absentToday: currentAbsent,
+            employees: updated,
+          ));
         } catch (e) {
-          emit(EmployeeDeleteFailure(e.toString(), currentState.employees));
-          emit(EmployeesLoadSuccess(currentState.employees));
+          emit(EmployeeDeleteFailure(e.toString(), currentEmployees));
+          emit(EmployeesLoadSuccess(currentEmployees));
         }
       }
     });

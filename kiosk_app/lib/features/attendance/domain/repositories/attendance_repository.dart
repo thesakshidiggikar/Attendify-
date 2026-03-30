@@ -1,5 +1,7 @@
 abstract class AttendanceRepository {
-  Future<List<dynamic>> getRecentEntries(String userId);
-  Future<void> markAttendance(dynamic imageBytes);
-  Future<List<Map<String, dynamic>>> getRecentAttendance({String? userId});
+  /// Mark attendance via face image. Returns student info map.
+  Future<Map<String, dynamic>> markAttendance(String base64Image, {String? machineId});
+
+  /// Fetch recent attendance logs for this kiosk machine.
+  Future<List<Map<String, dynamic>>> getRecentAttendance({String? machineId});
 }

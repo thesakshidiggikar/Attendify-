@@ -1,55 +1,67 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import '../../domain/entities/user.dart';
-import '../../domain/repositories/auth_repository.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 
 part 'auth_event.dart';
 part 'auth_state.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  final AuthRepository authRepository;
-  
+  final AuthRepositoryImpl authRepository;
+  static const String _machineIdKey = 'kiosk_machine_id';
+
   AuthBloc({required this.authRepository}) : super(AuthInitial()) {
-    on<AuthBypassRequested>((event, emit) async {
-      emit(AuthAuthenticated(
-        user: User(
-          id: 'ADMIN',
-          name: event.username,
-          role: 'admin',
-          token: 'bypass_token',
-        ),
-      ));
-    });
+    on<CheckMachineStatus>(_onCheckMachineStatus);
+    on<MachineLoginRequested>(_onMachineLogin);
+    on<MachineLogoutRequested>(_onMachineLogout);
+  }
 
-    on<AuthLoginRequested>((event, emit) async {
-      emit(AuthLoading());
-      try {
-        final user = await authRepository.login(event.username, event.password);
-        emit(AuthAuthenticated(user: user!));
-      } catch (e) {
-        if (e.toString().contains('NEW_PASSWORD_REQUIRED')) {
-          emit(AuthNewPasswordRequiredState(username: event.username));
-        } else {
-          emit(AuthError(message: 'Login failed: ${e.toString().replaceAll('Exception: ', '')}'));
-        }
-      }
-    });
-
-    on<AuthLogoutRequested>((event, emit) async {
-      await authRepository.logout();
+  Future<void> _onCheckMachineStatus(
+    CheckMachineStatus event, Emitter<AuthState> emit,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final machineId = prefs.getString(_machineIdKey);
+    if (machineId != null && machineId.isNotEmpty) {
+      emit(MachineAuthenticated(machineId: machineId));
+    } else {
       emit(AuthInitial());
-    });
-    
-    on<AuthNewPasswordRequired>((event, emit) async {
-      emit(AuthLoading());
-      try {
-        // We know it's AuthRepositoryImpl here or we add it to interface
-        final user = await (authRepository as AuthRepositoryImpl).confirmNewPassword(event.username, event.newPassword);
-        emit(AuthAuthenticated(user: user));
-      } catch (e) {
-        emit(AuthError(message: 'Failed to update password: ${e.toString().replaceAll('Exception: ', '')}'));
-      }
-    });
+    }
+  }
+
+  Future<void> _onMachineLogin(
+    MachineLoginRequested event, Emitter<AuthState> emit,
+  ) async {
+    emit(AuthLoading());
+
+    // Instant bypass for dev/testing so it doesn't hang on network/CORS issues
+    if (event.adminPassword == 'admin') {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_machineIdKey, event.machineId);
+      emit(MachineAuthenticated(machineId: event.machineId));
+      return;
+    }
+
+    try {
+      // Validate admin credentials against backend
+      await authRepository.login('admin', event.adminPassword);
+
+      // Save machine ID locally
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_machineIdKey, event.machineId);
+
+      emit(MachineAuthenticated(machineId: event.machineId));
+    } catch (e) {
+      emit(AuthError(
+        message: 'Activation failed: ${e.toString().replaceAll('Exception: ', '')}',
+      ));
+    }
+  }
+
+  Future<void> _onMachineLogout(
+    MachineLogoutRequested event, Emitter<AuthState> emit,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_machineIdKey);
+    emit(AuthInitial());
   }
 }

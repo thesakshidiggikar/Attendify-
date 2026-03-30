@@ -33,7 +33,7 @@ class _FluidBackgroundState extends State<FluidBackground> with SingleTickerProv
     return Stack(
       children: [
         Positioned.fill(
-          child: Container(color: const Color(AppConstants.backgroundColor)),
+          child: Container(color: Color(AppConstants.backgroundColor)),
         ),
         AnimatedBuilder(
           animation: _controller,
@@ -57,11 +57,11 @@ class _FluidPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint1 = Paint()
-      ..color = const Color(AppConstants.accentColor).withOpacity(0.15)
+      ..color = Color(AppConstants.accentColor).withOpacity(0.15)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 100);
 
     final paint2 = Paint()
-      ..color = const Color(AppConstants.secondaryAccentColor).withOpacity(0.1)
+      ..color = Color(AppConstants.secondaryAccentColor).withOpacity(0.1)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 120);
 
     // Orbiting blob 1

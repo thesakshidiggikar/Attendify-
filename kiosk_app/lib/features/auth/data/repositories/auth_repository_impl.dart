@@ -4,8 +4,15 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../models/user_model.dart';
 
+import 'package:flutter/foundation.dart';
+
 class AuthRepositoryImpl implements AuthRepository {
-  String get baseUrl => dotenv.env['API_BASE_URL'] ?? 'https://wny1io6xre.execute-api.ap-south-1.amazonaws.com/dev';
+  String get baseUrl {
+    if (kIsWeb) {
+      return 'http://localhost:8000'; // local CORS proxy
+    }
+    return dotenv.env['API_BASE_URL'] ?? 'https://wny1io6xre.execute-api.ap-south-1.amazonaws.com/dev';
+  }
   
   AuthRepositoryImpl();
 

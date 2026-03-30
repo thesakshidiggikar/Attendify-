@@ -7,22 +7,20 @@ abstract class AuthState extends Equatable {
 }
 
 class AuthInitial extends AuthState {}
+
 class AuthLoading extends AuthState {}
-class AuthAuthenticated extends AuthState {
-  final User user;
-  const AuthAuthenticated({required this.user});
+
+/// Machine is activated and ready to scan faces
+class MachineAuthenticated extends AuthState {
+  final String machineId;
+  const MachineAuthenticated({required this.machineId});
   @override
-  List<Object> get props => [user];
+  List<Object> get props => [machineId];
 }
+
 class AuthError extends AuthState {
   final String message;
   const AuthError({required this.message});
   @override
   List<Object> get props => [message];
-}
-class AuthNewPasswordRequiredState extends AuthState {
-  final String username;
-  const AuthNewPasswordRequiredState({required this.username});
-  @override
-  List<Object> get props => [username];
 }

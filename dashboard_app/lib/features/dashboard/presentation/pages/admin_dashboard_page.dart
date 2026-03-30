@@ -276,6 +276,14 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> with SingleTick
                             total = state.totalStudents;
                             present = state.presentToday;
                             absent = state.absentToday;
+                          } else if (state is EmployeesLoadSuccess) {
+                            total = state.employees.length;
+                            present = 0; 
+                            absent = total;
+                          } else if (state is EmployeeDeleteSuccess) {
+                            total = state.employees.length;
+                            present = 0;
+                            absent = total;
                           } else if (state is DashboardStatsLoadFailure) {
                             return Center(child: Padding(padding: const EdgeInsets.all(20), child: Text('Failed to connect to AWS Database: ${state.error}', style: const TextStyle(color: Colors.red))));
                           }
@@ -422,7 +430,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> with SingleTick
                             ),
                             IconButton(
                               icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
-                              onPressed: () => _showDeleteDialog(emp.username),
+                              onPressed: () => _showDeleteDialog(emp.username, emp.cognitoUserId),
                               tooltip: 'Remove Student',
                             ),
                           ],
@@ -500,12 +508,14 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> with SingleTick
                   BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10)),
                 ],
               ),
-              child: BlocConsumer<DashboardBloc, DashboardState>(
+                child: BlocConsumer<DashboardBloc, DashboardState>(
                 listener: (context, state) {
+                  if (state is RegisterEmployeeSuccess || state is EmployeeDeleteSuccess || state is ManualAttendanceSubmitSuccess) {
+                    // Automatically refresh stats after any change
+                    context.read<DashboardBloc>().add(FetchDashboardStatsRequested());
+                  }
                   if (state is RegisterEmployeeSuccess) {
                     _formKey.currentState?.clearForm();
-                    // Refresh stats to update the next ID
-                    context.read<DashboardBloc>().add(FetchDashboardStatsRequested());
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: const Text('Student added successfully!'),
@@ -533,18 +543,16 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> with SingleTick
                             onRegister: ({
                               required studentId, 
                               required fullName, 
-                              required email, 
                               required password, 
-                              required profile, 
                               required department, 
                               required image
                             }) {
                               context.read<DashboardBloc>().add(RegisterEmployeeRequested(
                                 userId: studentId,
                                 fullName: fullName, 
-                                email: email, 
+                                email: '', // No longer in UI
                                 password: password, 
-                                profile: profile, 
+                                profile: 'student', // Default
                                 department: department,
                                 image: image,
                               ));
@@ -572,13 +580,13 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> with SingleTick
     );
   }
 
-  void _showDeleteDialog(String username) {
+  void _showDeleteDialog(String name, String userId) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Remove Student', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Text('Are you sure you want to remove $username from the system? This action cannot be undone.'),
+        content: Text('Are you sure you want to remove $name ($userId) from the system? This action cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx), 
@@ -593,7 +601,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> with SingleTick
             ),
             onPressed: () {
               Navigator.pop(ctx);
-              context.read<DashboardBloc>().add(DeleteEmployeeRequested(username));
+              context.read<DashboardBloc>().add(DeleteEmployeeRequested(userId));
             },
             child: const Text('Remove'),
           ),

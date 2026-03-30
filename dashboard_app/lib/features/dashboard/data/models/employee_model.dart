@@ -18,7 +18,7 @@ class EmployeeModel extends Employee {
       profile: json['profile'] ?? 'Student',
       department: json['department'] ?? 'General',
       faceId: json['face_id'] ?? json['FaceId'] ?? '',
-      cognitoUserId: json['user_id'] ?? json['cognito_user_id'] ?? '',
+      cognitoUserId: json['user_id'] ?? json['cognito_user_id'] ?? json['username'] ?? '',
       attendanceStatus: 'Not Marked',
     );
   }

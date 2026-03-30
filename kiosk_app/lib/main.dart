@@ -26,7 +26,7 @@ class MyApp extends StatelessWidget {
         BlocProvider(
           create: (context) => AuthBloc(
             authRepository: AuthRepositoryImpl(),
-          ),
+          )..add(CheckMachineStatus()), // Check if already activated on startup
         ),
       ],
       child: MaterialApp(
@@ -34,12 +34,20 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           primarySwatch: Colors.indigo,
           useMaterial3: true,
+          scaffoldBackgroundColor: const Color(0xFF0F172A),
         ),
         debugShowCheckedModeBanner: false,
-        initialRoute: '/login',
+        home: BlocBuilder<AuthBloc, AuthState>(
+          builder: (context, state) {
+            if (state is MachineAuthenticated) {
+              return const AttendancePage();
+            }
+            return const LoginPage();
+          },
+        ),
         routes: {
           '/login': (context) => const LoginPage(),
-          '/attendance': (context) => const AttendancePage(),
+          '/scanner': (context) => const AttendancePage(),
         },
       ),
     );

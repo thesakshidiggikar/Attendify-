@@ -7,9 +7,7 @@ class EmployeeRegistrationForm extends StatefulWidget {
   final void Function({
     required String studentId,
     required String fullName,
-    required String email,
     required String password,
-    required String profile,
     required String department,
     required XFile? image,
   }) onRegister;
@@ -50,11 +48,9 @@ class EmployeeRegistrationFormState extends State<EmployeeRegistrationForm> {
 
   void clearForm() {
     _fullNameController.clear();
-    _emailController.clear();
     _passwordController.clear();
     _departmentController.clear();
     setState(() {
-      _profile = 'student';
       _image = null;
     });
   }
@@ -102,28 +98,11 @@ class EmployeeRegistrationFormState extends State<EmployeeRegistrationForm> {
             children: [
               Expanded(
                 child: _buildInputField(
-                  controller: _emailController,
-                  label: 'Student Email',
-                  icon: Icons.email_outlined,
-                  validator: (v) => v == null || !v.contains('@') ? 'Enter a valid email' : null,
-                ),
-              ),
-              const SizedBox(width: 24),
-              Expanded(
-                child: _buildInputField(
                   controller: _departmentController,
                   label: 'Department / Class',
                   icon: Icons.business_rounded,
                   validator: (v) => v == null || v.isEmpty ? 'Please enter a department' : null,
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: _buildDropdownField(),
               ),
               const SizedBox(width: 24),
               Expanded(
@@ -219,9 +198,7 @@ class EmployeeRegistrationFormState extends State<EmployeeRegistrationForm> {
                   widget.onRegister(
                     studentId: _studentIdController.text.trim(),
                     fullName: _fullNameController.text.trim(),
-                    email: _emailController.text.trim(),
                     password: _passwordController.text.trim(),
-                    profile: _profile,
                     department: _departmentController.text.trim(),
                     image: _image,
                   );
@@ -259,37 +236,6 @@ class EmployeeRegistrationFormState extends State<EmployeeRegistrationForm> {
         labelText: label,
         labelStyle: const TextStyle(color: Color(AppConstants.textSecondary)),
         prefixIcon: Icon(icon, color: const Color(AppConstants.primaryLight)),
-        filled: true,
-        fillColor: const Color(AppConstants.backgroundColor).withOpacity(0.5),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.grey.withOpacity(0.2)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(AppConstants.primaryColor), width: 2),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDropdownField() {
-    return DropdownButtonFormField<String>(
-      value: _profile,
-      dropdownColor: Colors.white,
-      items: const [
-        DropdownMenuItem(value: 'student', child: Text('Student')),
-        DropdownMenuItem(value: 'admin', child: Text('Admin')),
-      ],
-      onChanged: (v) => setState(() => _profile = v ?? 'student'),
-      decoration: InputDecoration(
-        labelText: 'Role',
-        labelStyle: const TextStyle(color: Color(AppConstants.textSecondary)),
-        prefixIcon: const Icon(Icons.badge_outlined, color: Color(AppConstants.primaryLight)),
         filled: true,
         fillColor: const Color(AppConstants.backgroundColor).withOpacity(0.5),
         border: OutlineInputBorder(

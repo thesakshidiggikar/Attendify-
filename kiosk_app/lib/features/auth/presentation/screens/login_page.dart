@@ -11,140 +11,218 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _newPassKey = GlobalKey<FormState>();
-  String _username = '';
-  String _password = '';
-  String _newPassword = '';
+  String _machineId = '';
+  String _adminPassword = '';
   String? _errorMessage;
   bool _obscurePassword = true;
+  late AnimationController _pulseController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(AppConstants.backgroundColor),
+      backgroundColor: const Color(0xFF0F172A),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Container(
             constraints: const BoxConstraints(maxWidth: 450),
-            child: ProfessionalCard(
-              padding: const EdgeInsets.all(40),
-              borderRadius: 24,
-              child: BlocConsumer<AuthBloc, AuthState>(
-                listener: (context, state) {
-                  if (state is AuthAuthenticated) {
-                    Navigator.pushReplacementNamed(context, '/attendance');
-                  }
-                  if (state is AuthError) {
-                    setState(() => _errorMessage = state.message);
-                  } else {
-                    setState(() => _errorMessage = null);
-                  }
-                },
-                builder: (context, state) {
-                  if (state is AuthNewPasswordRequiredState) {
-                    return _buildNewPasswordForm(context, state);
-                  }
-                  
-                  return Form(
-                    key: _formKey,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: const Color(AppConstants.primaryColor).withOpacity(0.1),
-                            shape: BoxShape.circle,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Animated Device Icon
+                AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (context, child) {
+                    return Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            const Color(AppConstants.primaryColor).withOpacity(0.2 + _pulseController.value * 0.1),
+                            const Color(AppConstants.primaryColor).withOpacity(0.05),
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(AppConstants.primaryColor).withOpacity(0.3 * _pulseController.value),
+                            blurRadius: 40,
+                            spreadRadius: 10,
                           ),
-                          child: const Icon(
-                            Icons.school_rounded, 
-                            size: 48, 
-                            color: Color(AppConstants.primaryColor)
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        const Text(
-                          'Student Portal',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Color(AppConstants.textPrimary),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Sign in with the ID provided by Admin',
-                          style: TextStyle(
-                            color: Color(AppConstants.textSecondary), 
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 40),
-                        _buildInputField(
-                          label: 'Student ID',
-                          icon: Icons.badge_outlined,
-                          onChanged: (val) => _username = val,
-                          validator: (val) => val == null || val.isEmpty ? 'Enter your Student ID (e.g. STUD001)' : null,
-                        ),
-                        const SizedBox(height: 20),
-                        _buildInputField(
-                          label: 'Password',
-                          icon: Icons.lock_outline_rounded,
-                          isPassword: true,
-                          obscureText: _obscurePassword,
-                          onToggleVisibility: () => setState(() => _obscurePassword = !_obscurePassword),
-                          onChanged: (val) => _password = val,
-                          validator: (val) => val == null || val.isEmpty ? 'Enter your password' : null,
-                        ),
-                        if (_errorMessage != null) ...[
-                          const SizedBox(height: 20),
-                          _buildErrorBox(_errorMessage!),
                         ],
-                        const SizedBox(height: 32),
-                        if (state is AuthLoading)
-                          const CircularProgressIndicator()
-                        else
-                          SizedBox(
-                            width: double.infinity,
-                            height: 56,
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(AppConstants.primaryColor),
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.phonelink_setup_rounded,
+                        size: 64,
+                        color: Color(AppConstants.primaryColor),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 32),
+                const Text(
+                  'KIOSK ACTIVATION',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: 3,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Register this device as an attendance kiosk',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.5),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 40),
+
+                // Form Card
+                ProfessionalCard(
+                  padding: const EdgeInsets.all(32),
+                  borderRadius: 24,
+                  color: const Color(0xFF1E293B),
+                  child: BlocConsumer<AuthBloc, AuthState>(
+                    listener: (context, state) {
+                      if (state is MachineAuthenticated) {
+                        Navigator.pushReplacementNamed(context, '/scanner');
+                      }
+                      if (state is AuthError) {
+                        setState(() => _errorMessage = state.message);
+                      } else {
+                        setState(() => _errorMessage = null);
+                      }
+                    },
+                    builder: (context, state) {
+                      return Form(
+                        key: _formKey,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Machine ID Field
+                            _buildInputField(
+                              label: 'Machine ID',
+                              hint: 'e.g. KIOSK-01',
+                              icon: Icons.devices_rounded,
+                              onChanged: (val) => _machineId = val.toUpperCase(),
+                              validator: (val) {
+                                if (val == null || val.isEmpty) return 'Enter a Machine ID';
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 20),
+                            // Admin Password Field
+                            _buildInputField(
+                              label: 'Admin Password',
+                              hint: 'Enter admin password',
+                              icon: Icons.admin_panel_settings_rounded,
+                              isPassword: true,
+                              obscureText: _obscurePassword,
+                              onToggleVisibility: () => setState(() => _obscurePassword = !_obscurePassword),
+                              onChanged: (val) => _adminPassword = val,
+                              validator: (val) {
+                                if (val == null || val.isEmpty) return 'Enter admin password';
+                                return null;
+                              },
+                            ),
+                            if (_errorMessage != null) ...[
+                              const SizedBox(height: 20),
+                              _buildErrorBox(_errorMessage!),
+                            ],
+                            const SizedBox(height: 32),
+                            if (state is AuthLoading)
+                              const SizedBox(
+                                height: 56,
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    color: Color(AppConstants.primaryColor),
+                                  ),
+                                ),
+                              )
+                            else
+                              SizedBox(
+                                width: double.infinity,
+                                height: 56,
+                                child: ElevatedButton.icon(
+                                  icon: const Icon(Icons.power_settings_new_rounded),
+                                  label: const Text(
+                                    'ACTIVATE MACHINE',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 1.5,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(AppConstants.primaryColor),
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  onPressed: () {
+                                    if (_formKey.currentState!.validate()) {
+                                      context.read<AuthBloc>().add(
+                                        MachineLoginRequested(_machineId, _adminPassword),
+                                      );
+                                    }
+                                  },
                                 ),
                               ),
-                              onPressed: () {
-                                if (_formKey.currentState!.validate()) {
-                                  // Restore bypass for dev/testing
-                                  if (_username == 'admin' && _password == 'admin') {
-                                    context.read<AuthBloc>().add(AuthBypassRequested(_username));
-                                    return;
-                                  }
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
 
-                                  context.read<AuthBloc>().add(
-                                    AuthLoginRequested(_username, _password),
-                                  );
-                                }
-                              },
-                              child: const Text(
-                                'Login to Kiosk', 
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+                const SizedBox(height: 24),
+                // Device info
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withOpacity(0.08)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.info_outline_rounded, color: Colors.white.withOpacity(0.3), size: 16),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Up to 4 devices can be registered as kiosks',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.3),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -154,6 +232,7 @@ class _LoginPageState extends State<LoginPage> {
 
   Widget _buildInputField({
     required String label,
+    required String hint,
     required IconData icon,
     bool isPassword = false,
     bool obscureText = false,
@@ -165,22 +244,36 @@ class _LoginPageState extends State<LoginPage> {
       obscureText: isPassword ? obscureText : false,
       onChanged: onChanged,
       validator: validator,
-      style: const TextStyle(color: Color(AppConstants.textPrimary)),
+      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: const Color(AppConstants.primaryColor).withOpacity(0.7)),
-        suffixIcon: isPassword 
-          ? IconButton(
-              icon: Icon(
-                obscureText ? Icons.visibility_off : Icons.visibility,
-                color: const Color(AppConstants.primaryColor).withOpacity(0.7),
-              ),
-              onPressed: onToggleVisibility,
-            )
-          : null,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        hintText: hint,
+        labelStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
+        hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
+        prefixIcon: Icon(icon, color: const Color(AppConstants.primaryColor).withOpacity(0.8)),
+        suffixIcon: isPassword
+            ? IconButton(
+                icon: Icon(
+                  obscureText ? Icons.visibility_off : Icons.visibility,
+                  color: Colors.white.withOpacity(0.4),
+                ),
+                onPressed: onToggleVisibility,
+              )
+            : null,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Color(AppConstants.primaryColor), width: 2),
+        ),
         filled: true,
-        fillColor: Colors.grey.withOpacity(0.05),
+        fillColor: Colors.white.withOpacity(0.05),
       ),
     );
   }
@@ -189,59 +282,18 @@ class _LoginPageState extends State<LoginPage> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.05),
+        color: Colors.red.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red.withOpacity(0.2)),
+        border: Border.all(color: Colors.red.withOpacity(0.3)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline_rounded, color: Colors.red, size: 20),
+          const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 20),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              message, 
-              style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w500)
-            )
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNewPasswordForm(BuildContext context, AuthNewPasswordRequiredState state) {
-    return Form(
-      key: _newPassKey,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.security_rounded, size: 64, color: Color(AppConstants.accentColor)),
-          const SizedBox(height: 24),
-          const Text('Reset Password', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          const Text('A new password is required for first-time login', textAlign: TextAlign.center),
-          const SizedBox(height: 32),
-          _buildInputField(
-            label: 'New Password',
-            icon: Icons.lock_reset,
-            isPassword: true,
-            obscureText: _obscurePassword,
-            onToggleVisibility: () => setState(() => _obscurePassword = !_obscurePassword),
-            onChanged: (val) => _newPassword = val,
-            validator: (val) => val == null || val.length < 8 ? 'Min 8 characters' : null,
-          ),
-          const SizedBox(height: 32),
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: () {
-                if (_newPassKey.currentState!.validate()) {
-                  context.read<AuthBloc>().add(
-                    AuthNewPasswordRequired(username: state.username, newPassword: _newPassword)
-                  );
-                }
-              },
-              child: const Text('Update & Sign In'),
+              message,
+              style: const TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.w500),
             ),
           ),
         ],
