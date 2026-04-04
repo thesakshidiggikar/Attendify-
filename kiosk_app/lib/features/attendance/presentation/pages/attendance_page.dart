@@ -88,27 +88,42 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
 
   Future<void> _initCamera() async {
     try {
+      // 1. Dispose old controller safely
+      if (_controller != null) {
+        await _controller!.dispose();
+        _controller = null;
+      }
+
+      // 2. Refresh camera list
       _cameras = await availableCameras();
       if (_cameras.isEmpty) {
         setState(() => _statusMessage = 'NO CAMERA FOUND');
         return;
       }
 
+      // 3. Selection: Always try front camera first, then fall back
       final frontCamera = _cameras.firstWhere(
         (c) => c.lensDirection == CameraLensDirection.front,
         orElse: () => _cameras[0],
       );
 
+      // 4. Create new controller
       _controller = CameraController(
         frontCamera,
-        ResolutionPreset.high,
+        ResolutionPreset.medium, // Use medium for faster Web initialization
         enableAudio: false,
         imageFormatGroup: (kIsWeb || defaultTargetPlatform != TargetPlatform.android)
             ? ImageFormatGroup.bgra8888
             : ImageFormatGroup.nv21,
       );
 
+      // 5. Initialize with delay for Web to clear hardware locks
+      if (kIsWeb) {
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+      
       await _controller!.initialize();
+
       if (mounted) {
         setState(() {
           _isCameraInitialized = true;
@@ -124,7 +139,14 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
     } catch (e) {
       debugPrint('Camera error: $e');
       if (mounted) {
-        setState(() => _statusMessage = 'CAMERA ERROR — RESTART APP');
+        String msg = 'CAMERA ERROR — RESTART APP';
+        final errStr = e.toString().toLowerCase();
+        if (errStr.contains('cameranotreadable') || errStr.contains('notreadable')) {
+          msg = 'CAMERA BLOCKED — CHECK PERMISSIONS';
+        } else if (errStr.contains('not found')) {
+          msg = 'NO CAMERA FOUND';
+        }
+        setState(() => _statusMessage = msg);
       }
     }
   }
@@ -149,6 +171,7 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
       if (_isProcessing) return; // double check
 
       if (faces.isNotEmpty) {
+        debugPrint('DEBUG: Detected ${faces.length} faces');
         if (_faceDetectedStartTime == null) {
           _faceDetectedStartTime = DateTime.now();
           setState(() => _statusMessage = 'FACE DETECTED — HOLD STILL');
@@ -255,7 +278,11 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
       if (mounted) {
         String errorMsg = 'Face Not Recognized';
         final errStr = e.toString().toLowerCase();
-        if (errStr.contains('not recognized') || errStr.contains('no match') || errStr.contains('unknown')) {
+        
+        // Extract message from Exception: ...
+        if (errStr.contains('exception:')) {
+          errorMsg = e.toString().split('exception:').last.trim();
+        } else if (errStr.contains('not recognized') || errStr.contains('no match') || errStr.contains('unknown')) {
           errorMsg = 'Face Not Recognized';
         } else if (errStr.contains('network') || errStr.contains('timeout')) {
           errorMsg = 'Network Error';

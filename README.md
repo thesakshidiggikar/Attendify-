@@ -1,100 +1,117 @@
-# FaceAttend: AI-Powered Enterprise Attendance System
+# Attendify: AI-Powered Face Recognition Attendance System
 
-FaceAttend is a decentralized, AI-driven attendance management solution designed for institutional scalability. Leveraging real-time on-device facial recognition and a serverless cloud backend, it provides a seamless experience for both administrators and employees/students.
+Attendify is a high-performance, decentralized attendance management solution. It uses on-device face detection and cloud-based identity verification to provide a seamless monitoring experience for institutions and enterprises.
 
-## System Architecture
+## 🏗️ System Architecture
 
-The project follows a distributed architecture with a clear separation between edge-processing (Kiosk) and centralized management (Dashboard).
+Attendify is built on a distributed **Clean Architecture** to ensure modularity, privacy, and scalability.
 
 ```mermaid
 graph TD
     subgraph "Edge Layer (Kiosk App)"
-        A[Camera Feed] --> B[Google ML Kit Detection]
+        A[Live Camera Feed] --> B[Google ML Kit Detection]
         B --> C[Face Crop/Preprocessing]
-        C --> D[AuthBloc State Management]
+        C --> D[Bloc State Management]
     end
 
-    subgraph "Cloud Layer (AWS)"
-        D --> E[API Gateway]
-        E --> F[Lambda: Face Rekognition]
-        E --> G[Lambda: Attendance Analytics]
-        F --> H[DynamoDB: Records]
-        G --> H
+    subgraph "Cloud Backend (AWS)"
+        D --> E[AWS API Gateway]
+        E --> F[Lambda: Identity Matching]
+        F --> G[AWS Rekognition]
+        E --> H[Lambda: Analytics & Reports]
+        F --> I[DynamoDB: Audit Logs]
+        G --> J[S3: Biometric Templates]
     end
 
     subgraph "Management Layer (Dashboard App)"
-        I[Admin UI] --> J[DashboardBloc]
-        J --> E
+        K[Admin Web Portal] --> L[Dashboard Bloc]
+        L --> E
     end
 ```
 
-### Edge Processing (Kiosk)
-- **Face Detection**: Local, on-device detection using Google ML Kit to minimize latency and bandwidth.
-- **Privacy First**: Sensitive biometric data is processed at the edge before being securely transmitted to the cloud.
+---
 
-### Serverless Infrastructure
-- **Compute**: Event-driven AWS Lambda functions handle authentication, identity matching, and analytics.
-- **Storage**: Highly available DynamoDB for structured records and S3 for secure encrypted image storage.
-- **API Management**: AWS API Gateway provides a managed entry point with role-based access control.
+## 📂 Project Structure & Core Modules
 
-## Engineering Standards
+This repository contains two primary Flutter applications. Each follows the **Clean Architecture** pattern (Data, Domain, Presentation).
 
-The codebase is engineered with high-level design patterns to ensure maintainability and testability at scale:
+### 1. Dashboard App (`/dashboard_app`)
+The administrative portal for real-time monitoring and student management.
+- **Data Layer**: Handles AWS API communication and DynamoDB record fetching.
+- **Domain Layer**: Contains the core business logic for attendance aggregation and student enrollment.
+- **Presentation Layer**: A sleek, reactive UI built with `flutter_bloc` for real-time data visualization.
 
-1.  **Clean Architecture**: Structured into Domain, Data, and Presentation layers to decouple business logic from external dependencies (frameworks, APIs).
-2.  **BLoC Pattern**: Uni-directional data flow using Reactive Programming for robust state management.
-3.  **Dependency Injection**: Decoupled service construction using the `GetIt` service locator.
-4.  **Modular Organization**: Feature-based folder structure for independent scaling of modules (Auth, Attendance, Analytics).
-
-## Technical Stack
-
-- **Framework**: Flutter (Cross-platform support for Web, Mobile, and Desktop)
-- **State Management**: `flutter_bloc`, `equatable`
-- **Networking**: `http`, `flutter_dotenv`
-- **Cloud Backend**: AWS (Lambda, API Gateway, S3, Cognito)
-- **ML Engine**: Google ML Kit (Edge Detection) + AWS Rekognition (Cloud Identification)
-
-## Core Components
-
-### 1. Dashboard Application
-A comprehensive administrative portal for:
-- Real-time attendance monitoring and data visualization.
-- Employee/Student database management.
-- Automated report generation and analytics.
-
-### 2. Kiosk Application
-A high-performance attendance entry station featuring:
-- Live holographic scanner interface.
-- Instant identity verification using face-matching algorithms.
-- Offline-first design principles for resilience.
-
-## Getting Started
-
-### Prerequisites
-- Flutter SDK (latest stable)
-- Git
-- AWS Account (configured for the serverless backend)
-
-### Setup
-1.  **Clone the Repository**:
-    ```bash
-    git clone https://github.com/thesakshidiggikar/Attendify-.git
-    cd Attendify-
-    ```
-2.  **Configure Environment**:
-    Create a `.env` file in both `dashboard_app/` and `kiosk_app/` based on the provided `.env.example` templates.
-3.  **Install Dependencies**:
-    ```bash
-    flutter pub get
-    ```
-
-## Development & Testing
-Comprehensive test scripts are provided in the `/scripts` directory to verify API connectivity and logic independently of the UI.
-
-- `test_login.py`: Validates authentication workflows.
-- `test_stats.py`: Verifies real-time analytics aggregation.
-- `test_get_employees.py`: Tests database retrieval latency.
+### 2. Kiosk App (`/kiosk_app`)
+The attendance entry station designed for physical deployment.
+- **Face Detector Service**: On-device detection using ML Kit (supports Android/Web).
+- **Attendance Flow**: Captures high-quality face crops and transmits them securely to the identity matching engine.
+- **Offline Resilience**: Built to handle network latency with optimistic UI updates.
 
 ---
-Designed for performance, security, and scalability.
-- Developed for DYPIU Projects.
+
+## 🚀 Installation & Setup (Developer Guide)
+
+Follow these steps to set up the project on your local machine for the first time.
+
+### Prerequisites
+- **Flutter SDK**: `^3.7.0` (Stable)
+- **Git**: Installed and configured in your PATH
+- **Android Studio**: Installed with Android SDK 36 (required for camera plugins)
+- **AWS Access**: Reach out to the project owner for API endpoints and Cognito keys.
+
+### 1. Clone the Repository
+```bash
+git clone https://github.com/thesakshidiggikar/Attendify-.git
+cd Attendify-
+```
+
+### 2. Environment Configuration
+Create a `.env` file in **both** project roots (`/dashboard_app` and `/kiosk_app`).
+
+**Template for `.env`:**
+```env
+API_BASE_URL=https://[your-api-gateway].execute-api.ap-south-1.amazonaws.com/default
+AWS_REGION=ap-south-1
+COGNITO_USER_POOL_ID=[pool-id]
+COGNITO_CLIENT_ID=[client-id]
+S3_BUCKET_NAME=[bucket-name]
+```
+
+### 3. Install Dependencies
+Navigate into each directory and run:
+```bash
+flutter pub get
+```
+
+### 4. Running the Apps
+
+#### For Dashboard (Web):
+```bash
+cd dashboard_app
+flutter run -d chrome --web-browser-flag "--disable-web-security"
+```
+
+#### For Kiosk App (Mobile/Native):
+Ensure your Android device is connected:
+```bash
+cd kiosk_app
+flutter run
+```
+
+---
+
+## 🛠️ Core Engineering Standards
+- **Uni-directional Data Flow**: Powered by the BLoC pattern.
+- **Dependency Injection**: Services are decoupled using the `GetIt` locator.
+- **Edge ML**: Google ML Kit is used for ultra-fast face detection before cloud verification.
+- **Secure Networking**: All transmissions are encrypted via TLS and protected by IAM roles.
+
+---
+
+## 📜 Credits & License
+- **Lead Developer**: Sakshi Diggikar
+- **Context**: Institutional Attendance System Project
+- **University**: DYPIU
+
+---
+*Designed for security. Engineered for scale.*

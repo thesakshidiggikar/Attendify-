@@ -6,9 +6,6 @@ import 'package:flutter/foundation.dart';
 
 class AttendanceRemoteDataSource {
   String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:8000'; // local CORS proxy
-    }
     return dotenv.env['API_BASE_URL'] ??
         'https://s3c1f3w0jg.execute-api.ap-south-1.amazonaws.com/default';
   }
@@ -21,7 +18,7 @@ class AttendanceRemoteDataSource {
   }) async {
     final url = Uri.parse('$baseUrl/mark_attendance');
     final body = <String, dynamic>{
-      'image_bytes': base64Image,
+      'image': base64Image, // Match registration key 'image'
     };
     if (machineId != null) {
       body['device'] = machineId;
@@ -29,7 +26,10 @@ class AttendanceRemoteDataSource {
 
     final response = await http.post(
       url,
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
       body: jsonEncode(body),
     );
 
@@ -37,7 +37,16 @@ class AttendanceRemoteDataSource {
     print('DEBUG: mark_attendance body=${response.body}');
 
     if (response.statusCode != 200) {
-      throw Exception('Failed to mark attendance: ${response.body}');
+      // Try to parse error message from body
+      try {
+        final errDecoded = jsonDecode(response.body);
+        final errBody = errDecoded is Map && errDecoded.containsKey('body') 
+            ? (errDecoded['body'] is String ? jsonDecode(errDecoded['body']) : errDecoded['body'])
+            : errDecoded;
+        throw Exception(errBody['message'] ?? errBody['error'] ?? 'Failed to mark attendance');
+      } catch (e) {
+        throw Exception('Failed to mark attendance: ${response.statusCode}');
+      }
     }
 
     final decoded = jsonDecode(response.body);
@@ -83,7 +92,12 @@ class AttendanceRemoteDataSource {
     final url = Uri.parse('$baseUrl/recent-attendance$queryParams');
 
     try {
-      final response = await http.get(url);
+      final response = await http.get(
+        url,
+        headers: {
+          'Accept': 'application/json',
+        },
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
@@ -93,6 +107,12 @@ class AttendanceRemoteDataSource {
           bodyData = b is String ? jsonDecode(b) : b;
         } else {
           bodyData = data;
+        }
+
+        print('DEBUG: fetchRecentAttendance bodyData type=${bodyData.runtimeType}');
+        if (bodyData is! Map) {
+          print('DEBUG: fetchRecentAttendance error: bodyData is not a Map, it is $bodyData');
+          return [];
         }
 
         final List<dynamic> recent =
