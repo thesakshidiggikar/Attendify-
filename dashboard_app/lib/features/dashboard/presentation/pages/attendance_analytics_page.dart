@@ -9,19 +9,28 @@ class AttendanceAnalyticsPage extends StatefulWidget {
 
   @override
   State<AttendanceAnalyticsPage> createState() => _AttendanceAnalyticsPageState();
+  
 }
 
 class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<DashboardBloc>().add(FetchDashboardStatsRequested());
+  }
+
   String _selectedView = 'Daily';
   final List<String> _views = ['Daily', 'Weekly', 'Monthly'];
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(40.0),
-      child: Column(
+    return SingleChildScrollView(
+    child: Padding(
+    padding: const EdgeInsets.all(40.0),
+    child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+        children:[
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -92,8 +101,8 @@ class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
           ),
           const SizedBox(height: 32),
           // Visualization Area
-          Expanded(
-            child: Container(
+          Container(
+            height:50, 
               padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -122,9 +131,10 @@ class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
                 ],
               ),
             ),
-          ),
+          
         ],
       ),
+    ),
     );
   }
 
@@ -205,15 +215,24 @@ class _PremiumChartPlaceholder extends StatelessWidget {
               color: const Color(AppConstants.backgroundColor),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.info_outline_rounded, size: 16, color: Color(AppConstants.textSecondary)),
                 SizedBox(width: 8),
-                Text(
-                  'Live Data Integration Pending',
-                  style: TextStyle(color: Color(AppConstants.textSecondary), fontWeight: FontWeight.w500, fontSize: 13),
-                ),
+                BlocBuilder<DashboardBloc, DashboardState>(
+                builder: (context, state) {
+                if (state is DashboardStatsLoadSuccess) {
+                  return const Text('Live Data Connected');
+                } else if (state is DashboardStatsLoadInProgress) {
+                  return const Text('Loading...');
+                } else {
+                  return const Text('No Data');
+                }
+              },
+            ),
+                  // style: TextStyle(color: Color(AppConstants.textSecondary), fontWeight: FontWeight.w500, fontSize: 13),
+                // ),
               ],
             ),
           ),

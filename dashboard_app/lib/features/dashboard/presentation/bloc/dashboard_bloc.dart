@@ -23,12 +23,12 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
           final analytics = await dashboardRepository.fetchAttendanceAnalytics();
           print('DEBUG: Analytics map: $analytics');
           // Map to the specific keys found in your Lambda response: total_records, present_count, absent_count
-          if (analytics['present_count'] != null) {
-            present = (analytics['present_count'] as num).toInt();
-          }
-          if (analytics['absent_count'] != null) {
-            absent = (analytics['absent_count'] as num).toInt();
-          }
+if (analytics['present_today'] != null) {
+  present = (analytics['present_today'] as num).toInt();
+}
+if (analytics['absent_today'] != null) {
+  absent = (analytics['absent_today'] as num).toInt();
+}
           print('DEBUG: Parsed present: $present, absent: $absent');
         } catch (e) {
           print('DEBUG: Analytics fetch/parse error: $e');
