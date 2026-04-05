@@ -2,7 +2,7 @@
 
 Attendify is a high-performance, decentralized attendance management solution. It uses on-device face detection and cloud-based identity verification to provide a seamless monitoring experience for institutions and enterprises.
 
-## 🏗️ System Architecture
+## System Architecture
 
 Attendify is built on a distributed **Clean Architecture** to ensure modularity, privacy, and scalability.
 
@@ -31,7 +31,7 @@ graph TD
 
 ---
 
-## 📂 Project Structure & Core Modules
+## Project Structure & Core Modules
 
 This repository contains two primary Flutter applications. Each follows the **Clean Architecture** pattern (Data, Domain, Presentation).
 
@@ -49,7 +49,7 @@ The attendance entry station designed for physical deployment.
 
 ---
 
-## 🚀 Installation & Setup (Developer Guide)
+## Installation & Setup (Developer Guide)
 
 Follow these steps to set up the project on your local machine for the first time.
 
@@ -100,7 +100,7 @@ flutter run
 
 ---
 
-## 🛠️ Core Engineering Standards
+## Core Engineering Standards
 - **Uni-directional Data Flow**: Powered by the BLoC pattern.
 - **Dependency Injection**: Services are decoupled using the `GetIt` locator.
 - **Edge ML**: Google ML Kit is used for ultra-fast face detection before cloud verification.
@@ -108,7 +108,7 @@ flutter run
 
 ---
 
-## 📜 Credits & License
+## Credits & License
 - **Lead Developer**: Sakshi Diggikar
 - **Context**: Institutional Attendance System Project
 - **University**: DYPIU

@@ -12,6 +12,7 @@ build/
 .env
 .env.*
 ! .env.example
+PROJECT_DEEPDIVE.md
 
 # IDE specific
 .idea/
