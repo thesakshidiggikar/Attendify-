@@ -13,6 +13,7 @@ build/
 .env.*
 ! .env.example
 PROJECT_DEEPDIVE.md
+TESTING_SECURITY_REPORT.md
 
 # IDE specific
 .idea/
