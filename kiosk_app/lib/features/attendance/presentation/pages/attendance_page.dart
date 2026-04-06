@@ -40,7 +40,7 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
   String _statusMessage = 'INITIALIZING CAMERA...';
   bool _isProcessing = false;
   bool _isCooldown = false;
-  DateTime _now = DateTime.now();
+  DateTime _now = DateTime.now().toUtc().add(const Duration(hours: 5, minutes: 30));
   Timer? _clockTimer;
   Timer? _webScanTimer;
 
@@ -84,7 +84,7 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
     _faceDetectorService.initialize();
 
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() => _now = DateTime.now());
+      if (mounted) setState(() => _now = DateTime.now().toUtc().add(const Duration(hours: 5, minutes: 30)));
     });
 
     WidgetsBinding.instance.addObserver(this);
@@ -986,7 +986,7 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
 
   String _formatTime(String ts) {
     try {
-      final dt = DateTime.parse(ts).toLocal();
+      final dt = DateTime.parse(ts).toUtc().add(const Duration(hours: 5, minutes: 30));
       final hour = dt.hour > 12 ? dt.hour - 12 : dt.hour;
       final ampm = dt.hour >= 12 ? 'PM' : 'AM';
       return '${hour == 0 ? 12 : hour}:${dt.minute.toString().padLeft(2, '0')} $ampm';

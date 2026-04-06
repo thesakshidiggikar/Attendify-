@@ -14,6 +14,12 @@ Designed for institutions. Powered by AI. Deployed at the edge.
 
 ---
 
+## 🎉 Project Status: COMPLETED
+
+This repository contains the finalized core implementation for the Face Recognition Attendance System (MCA Capstone). All core modules (Edge Face Detection, AWS Cloud Verification, and Real-Time Dashboard) have been successfully integrated, stress-tested, and are fully operational.
+
+---
+
 ## 🚀 What is Attendify?
 
 Attendify is a **dual-app, cloud-connected attendance system** that uses AI face recognition to automate student attendance — no ID cards, no manual rolls, no friction.
@@ -99,6 +105,11 @@ FaceAttend-Flutter/
         └── attendance/
             ├── data/          # API calls, data sources
             └── presentation/  # Camera, face detection, UI
+│
+└── 📂 scripts/               # Python test utilities
+    ├── generate_performance_graphs.py  # Generated matplotlib graphs for reports
+    ├── brute_force_login.py            # Security test scripts
+    └── cors_proxy.py                   # Network utilities
 ```
 
 ---
