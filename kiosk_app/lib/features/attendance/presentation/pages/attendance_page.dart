@@ -4,9 +4,11 @@ import '../../../../shared/constants/app_constants.dart';
 import '../widgets/holographic_scanner.dart';
 import '../widgets/attendance_success_overlay.dart';
 import '../widgets/attendance_failure_overlay.dart';
+import '../widgets/attendance_already_marked_overlay.dart';
 import 'package:camera/camera.dart';
 import 'dart:convert';
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../services/face_detector_service.dart';
 import '../services/face_detector_bridge.dart';
@@ -21,7 +23,7 @@ class AttendancePage extends StatefulWidget {
   State<AttendancePage> createState() => _AttendancePageState();
 }
 
-class _AttendancePageState extends State<AttendancePage> with TickerProviderStateMixin {
+class _AttendancePageState extends State<AttendancePage> with TickerProviderStateMixin, WidgetsBindingObserver {
   // Camera
   CameraController? _controller;
   bool _isCameraInitialized = false;
@@ -45,9 +47,22 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
   // Overlays
   bool _showSuccessOverlay = false;
   bool _showFailureOverlay = false;
+  bool _showAlreadyMarkedOverlay = false;
   String _successStudentName = '';
   String? _successUserId;
   String _failureMessage = 'Face Not Recognized';
+
+  // Pause / Resume
+  bool _isPaused = false;
+
+  // Rate limiting — block after 5 failed attempts per session
+  static const int _maxFailedAttempts = 5;
+  int _failedAttempts = 0;
+  bool _isRateLimited = false;
+
+  // Throttling for Android performance
+  DateTime _lastProcessTime = DateTime.now();
+  static const int _processIntervalMs = 250; // Max 4 frames per second for detection
 
   // Recent logs (on this machine today)
   List<Map<String, dynamic>> _recentLogs = [];
@@ -72,6 +87,8 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
       if (mounted) setState(() => _now = DateTime.now());
     });
 
+    WidgetsBinding.instance.addObserver(this);
+
     // Start camera immediately
     _initCamera();
     _fetchRecentLogs();
@@ -79,11 +96,39 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
 
   @override
   void dispose() {
-    _faceDetectorService.dispose();
-    _controller?.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     _clockTimer?.cancel();
     _webScanTimer?.cancel();
+    _tryDisposeCamera();
+    try {
+      _faceDetectorService.dispose();
+    } catch (e) {
+      debugPrint('ML Kit disposal warning: $e');
+    }
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_controller == null || !_controller!.value.isInitialized) return;
+
+    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+      _tryDisposeCamera();
+    } else if (state == AppLifecycleState.resumed) {
+      _initCamera();
+    }
+  }
+
+  Future<void> _tryDisposeCamera() async {
+    if (_controller != null) {
+      final oldController = _controller;
+      _controller = null; // Detach immediately 
+      try {
+        await oldController?.dispose();
+      } catch (e) {
+        debugPrint('Camera disposal error: $e');
+      }
+    }
   }
 
   Future<void> _initCamera() async {
@@ -110,19 +155,27 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
       // 4. Create new controller
       _controller = CameraController(
         frontCamera,
-        ResolutionPreset.medium, // Use medium for faster Web initialization
+        ResolutionPreset.medium,
         enableAudio: false,
         imageFormatGroup: (kIsWeb || defaultTargetPlatform != TargetPlatform.android)
             ? ImageFormatGroup.bgra8888
             : ImageFormatGroup.nv21,
       );
 
-      // 5. Initialize with delay for Web to clear hardware locks
-      if (kIsWeb) {
-        await Future.delayed(const Duration(milliseconds: 500));
-      }
+      // 5. Initialize with delay to clear hardware locks (especially after hot restart)
+      await Future.delayed(const Duration(milliseconds: 400));
       
-      await _controller!.initialize();
+      try {
+        await _controller!.initialize();
+      } catch (e) {
+        if (e is CameraException && e.code.contains('already_exists')) {
+           // Retry once after a second
+           await Future.delayed(const Duration(seconds: 1));
+           await _controller!.initialize();
+        } else {
+           rethrow;
+        }
+      }
 
       if (mounted) {
         setState(() {
@@ -130,7 +183,7 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
           _statusMessage = 'READY — SHOW YOUR FACE';
         });
 
-        if (kIsWeb) {
+        if (kIsWeb || defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.linux) {
           _startWebFaceDetection();
         } else {
           _controller!.startImageStream(_processNativeCameraImage);
@@ -156,6 +209,13 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
   // ─── NATIVE FACE DETECTION (Android/iOS) ─────────────────────────
   Future<void> _processNativeCameraImage(CameraImage image) async {
     if (_isProcessing || _isCooldown || _showSuccessOverlay || _showFailureOverlay || _isDetecting) return;
+
+    // Throttling: Skip if last process was too recent
+    final now = DateTime.now();
+    if (now.difference(_lastProcessTime).inMilliseconds < _processIntervalMs) {
+      return;
+    }
+    _lastProcessTime = now;
 
     _isDetecting = true;
     try {
@@ -207,12 +267,14 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
 
   // ─── WEB FACE DETECTION (simulated) ──────────────────────────────
   void _startWebFaceDetection() {
+    _webScanTimer?.cancel();
     _webScanTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-      if (!mounted || _isProcessing || _isCooldown || _showSuccessOverlay || _showFailureOverlay) {
+      if (!mounted || _isProcessing || _isCooldown || _isPaused || _isRateLimited ||
+          _showSuccessOverlay || _showFailureOverlay || _showAlreadyMarkedOverlay) {
         return;
       }
 
-      // On web, simulate face detection with a progressive scan
+      // On desktop/web, simulate face detection with a progressive scan
       if (_faceDetectedStartTime == null) {
         _faceDetectedStartTime = DateTime.now();
         setState(() => _statusMessage = 'SCANNING FACE...');
@@ -232,7 +294,8 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
 
   // ─── CAPTURE & SUBMIT TO BACKEND ─────────────────────────────────
   Future<void> _captureAndSubmit() async {
-    if (_isProcessing || _controller == null || !_controller!.value.isInitialized) return;
+    if (_isProcessing || _isPaused || _isRateLimited) return;
+    if (_controller == null || !_controller!.value.isInitialized) return;
 
     setState(() {
       _isProcessing = true;
@@ -240,8 +303,6 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
     });
 
     try {
-      // Stop image stream is disabled because it causes race conditions on Android.
-      // We take the picture directly while the stream is active.
       if (!kIsWeb) {
         await Future.delayed(const Duration(milliseconds: 300));
       }
@@ -250,6 +311,14 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
       final bytes = await image.readAsBytes();
       final base64Image = base64Encode(bytes);
 
+      // ✅ Delete the temp file immediately — we only need the base64 for AWS
+      // Images must NOT be stored on device storage
+      if (!kIsWeb) {
+        try {
+          await File(image.path).delete();
+        } catch (_) {} // Safe to ignore if already gone
+      }
+
       // Send to backend
       final repo = AttendanceRepositoryImpl(AttendanceRemoteDataSource());
       final result = await repo.markAttendance(base64Image, machineId: _machineId);
@@ -257,29 +326,68 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
       if (mounted) {
         final name = result['name'] ?? 'Unknown';
         final userId = result['user_id'] as String?;
+        final message = (result['message'] ?? '').toString().toLowerCase();
 
-        // Add to local recent logs
-        _recentLogs.insert(0, {
-          'name': name,
-          'user_id': userId ?? '',
-          'timestamp': DateTime.now().toIso8601String(),
-        });
-        if (_recentLogs.length > 10) _recentLogs = _recentLogs.sublist(0, 10);
+        // Detect "already marked" response from Lambda
+        final isAlreadyMarked = message.contains('already');
 
-        setState(() {
-          _successStudentName = name;
-          _successUserId = userId;
-          _showSuccessOverlay = true;
-          _isProcessing = false;
-        });
+        if (isAlreadyMarked) {
+          // Show amber "Already Marked" overlay — do NOT add to log
+          setState(() {
+            _successStudentName = name;
+            _successUserId = userId;
+            _showAlreadyMarkedOverlay = true;
+            _isProcessing = false;
+          });
+        } else {
+          // Reset failed attempts on any real success
+          _failedAttempts = 0;
+
+          // Add to local recent logs only on a fresh mark
+          _recentLogs.insert(0, {
+            'name': name,
+            'user_id': userId ?? '',
+            'timestamp': DateTime.now().toIso8601String(),
+          });
+          if (_recentLogs.length > 10) _recentLogs = _recentLogs.sublist(0, 10);
+
+          setState(() {
+            _successStudentName = name;
+            _successUserId = userId;
+            _showSuccessOverlay = true;
+            _isProcessing = false;
+          });
+          
+          // Re-fetch global log to include manual marks from dashboard
+          _fetchRecentLogs();
+        }
       }
     } catch (e) {
       debugPrint('Attendance error: $e');
       if (mounted) {
+        // Increment failed attempts and check rate limit
+        _failedAttempts++;
+        if (_failedAttempts >= _maxFailedAttempts) {
+          setState(() {
+            _isRateLimited = true;
+            _isProcessing = false;
+            _statusMessage = 'TOO MANY ATTEMPTS — PAUSED FOR 60s';
+          });
+          // Auto-reset rate limit after 60 seconds
+          Future.delayed(const Duration(seconds: 60), () {
+            if (mounted) {
+              setState(() {
+                _isRateLimited = false;
+                _failedAttempts = 0;
+                _statusMessage = 'READY — SHOW YOUR FACE';
+              });
+            }
+          });
+          return;
+        }
+
         String errorMsg = 'Face Not Recognized';
         final errStr = e.toString().toLowerCase();
-        
-        // Extract message from Exception: ...
         if (errStr.contains('exception:')) {
           errorMsg = e.toString().split('exception:').last.trim();
         } else if (errStr.contains('not recognized') || errStr.contains('no match') || errStr.contains('unknown')) {
@@ -297,10 +405,31 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
     }
   }
 
+  // ─── PAUSE / RESUME ───────────────────────────────────────────────
+  void _togglePause() {
+    setState(() {
+      _isPaused = !_isPaused;
+      if (_isPaused) {
+        _webScanTimer?.cancel();
+        _faceDetectedStartTime = null;
+        _scanProgress = 0.0;
+        _statusMessage = 'PAUSED';
+      } else {
+        _statusMessage = 'READY — SHOW YOUR FACE';
+        if (kIsWeb || defaultTargetPlatform == TargetPlatform.windows ||
+            defaultTargetPlatform == TargetPlatform.macOS ||
+            defaultTargetPlatform == TargetPlatform.linux) {
+          _startWebFaceDetection();
+        }
+      }
+    });
+  }
+
   void _onOverlayDismissed() {
     setState(() {
       _showSuccessOverlay = false;
       _showFailureOverlay = false;
+      _showAlreadyMarkedOverlay = false;
       _faceDetectedStartTime = null;
       _scanProgress = 0.0;
       _isCooldown = true;
@@ -309,14 +438,14 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
 
     // Cooldown before next scan
     Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
+      if (mounted && !_isPaused && !_isRateLimited) {
         setState(() {
           _isCooldown = false;
           _statusMessage = 'READY — SHOW YOUR FACE';
         });
 
         // Restart image stream or web scanning
-        if (kIsWeb) {
+        if (kIsWeb || defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.linux) {
           _faceDetectedStartTime = null;
           _startWebFaceDetection();
         } else if (_controller != null && _controller!.value.isInitialized) {
@@ -380,7 +509,7 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
                 final isNarrow = constraints.maxWidth < 700;
                 return Column(
                   children: [
-                    _buildTopBar(isNarrow),
+                    _buildTopBar(isNarrow, constraints.maxWidth),
                     const SizedBox(height: 12),
                     Expanded(
                       child: isNarrow
@@ -401,6 +530,14 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
               onDismiss: _onOverlayDismissed,
             ),
 
+          // Already Marked Overlay (amber)
+          if (_showAlreadyMarkedOverlay)
+            AttendanceAlreadyMarkedOverlay(
+              studentName: _successStudentName,
+              userId: _successUserId,
+              onDismiss: _onOverlayDismissed,
+            ),
+
           // Failure Overlay
           if (_showFailureOverlay)
             AttendanceFailureOverlay(
@@ -413,10 +550,19 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
   }
 
   // ─── TOP BAR ─────────────────────────────────────────────────────
-  Widget _buildTopBar(bool isNarrow) {
+  Widget _buildTopBar(bool isNarrow, double width) {
+    final isVeryNarrow = width < 500;
+    final isExtremelyNarrow = width < 400;
+
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: isNarrow ? 12 : 24, vertical: 8),
-      padding: EdgeInsets.symmetric(horizontal: isNarrow ? 16 : 24, vertical: 12),
+      margin: EdgeInsets.symmetric(
+        horizontal: isExtremelyNarrow ? 8 : (isNarrow ? 12 : 24),
+        vertical: 8,
+      ),
+      padding: EdgeInsets.symmetric(
+        horizontal: isExtremelyNarrow ? 12 : (isNarrow ? 16 : 24),
+        vertical: isExtremelyNarrow ? 8 : 12,
+      ),
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(16),
@@ -433,44 +579,48 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
             ),
             child: const Icon(Icons.devices_rounded, color: Color(AppConstants.primaryColor), size: 20),
           ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                _machineId,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1,
+          const SizedBox(width: 8),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _machineId,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: isExtremelyNarrow ? 14 : 16,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1,
+                  ),
                 ),
-              ),
-              Row(
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: _isCooldown
-                          ? Colors.orange
-                          : const Color(AppConstants.successColor),
-                      shape: BoxShape.circle,
+                Row(
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: _isCooldown
+                            ? Colors.orange
+                            : const Color(AppConstants.successColor),
+                        shape: BoxShape.circle,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    _isCooldown ? 'Cooldown' : 'Active',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.5),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
+                    const SizedBox(width: 6),
+                    Text(
+                      _isCooldown ? 'Cooldown' : 'Active',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.5),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
           const Spacer(),
 
@@ -481,26 +631,73 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
             children: [
               Text(
                 '${_now.hour.toString().padLeft(2, '0')}:${_now.minute.toString().padLeft(2, '0')}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w300,
-                  letterSpacing: 2,
-                ),
-              ),
-              Text(
-                '${_now.day} ${_getMonth(_now.month)} ${_now.year}',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.4),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  fontSize: isExtremelyNarrow ? 18 : 22,
+                  fontWeight: FontWeight.w300,
+                  letterSpacing: isExtremelyNarrow ? 1 : 2,
                 ),
               ),
+              if (!isVeryNarrow)
+                Text(
+                  '${_now.day} ${_getMonth(_now.month)} ${_now.year}',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.4),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
             ],
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
 
-          // Admin lock button
+          // ── Pause / Resume Button ──
+          Tooltip(
+            message: _isPaused ? 'Resume Scanning' : 'Pause Scanning',
+            child: GestureDetector(
+              onTap: _togglePause,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: _isPaused
+                      ? Colors.orange.withOpacity(0.18)
+                      : Colors.white.withOpacity(0.07),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _isPaused
+                        ? Colors.orange.withOpacity(0.5)
+                        : Colors.white.withOpacity(0.1),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                      color: _isPaused ? Colors.orange : Colors.white.withOpacity(0.55),
+                      size: 18,
+                    ),
+                    if (!isVeryNarrow) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        _isPaused ? 'RESUME' : 'PAUSE',
+                        style: TextStyle(
+                          color: _isPaused ? Colors.orange : Colors.white.withOpacity(0.55),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+
+          // Admin settings button
           IconButton(
             icon: Icon(Icons.settings_rounded, color: Colors.white.withOpacity(0.3), size: 22),
             onPressed: _deactivateMachine,
@@ -552,12 +749,14 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
           // Camera preview
           Positioned.fill(
             child: _isCameraInitialized && _controller != null && _controller!.value.isInitialized
-                ? FittedBox(
-                    fit: BoxFit.cover,
-                    child: SizedBox(
-                      width: _controller!.value.previewSize?.height ?? 1,
-                      height: _controller!.value.previewSize?.width ?? 1,
-                      child: CameraPreview(_controller!),
+                ? SizedBox.expand(
+                    child: FittedBox(
+                      fit: BoxFit.cover,
+                      child: SizedBox(
+                        width: 100,
+                        height: 100 / _controller!.value.aspectRatio,
+                        child: CameraPreview(_controller!),
+                      ),
                     ),
                   )
                 : Container(

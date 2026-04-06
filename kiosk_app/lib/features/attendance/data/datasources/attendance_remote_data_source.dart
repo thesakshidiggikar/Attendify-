@@ -88,8 +88,7 @@ class AttendanceRemoteDataSource {
   Future<List<Map<String, dynamic>>> fetchRecentAttendance({
     String? machineId,
   }) async {
-    final queryParams = machineId != null ? '?device=$machineId' : '';
-    final url = Uri.parse('$baseUrl/recent-attendance$queryParams');
+    final url = Uri.parse('$baseUrl/recent-attendance');
 
     try {
       final response = await http.get(
@@ -110,13 +109,17 @@ class AttendanceRemoteDataSource {
         }
 
         print('DEBUG: fetchRecentAttendance bodyData type=${bodyData.runtimeType}');
-        if (bodyData is! Map) {
-          print('DEBUG: fetchRecentAttendance error: bodyData is not a Map, it is $bodyData');
+
+        List<dynamic> recent = [];
+        if (bodyData is Map) {
+          recent = bodyData['recent_attendance'] ?? bodyData['records'] ?? [];
+        } else if (bodyData is List) {
+          recent = bodyData;
+        } else {
+          print('DEBUG: fetchRecentAttendance error: bodyData is not a Map or List, it is $bodyData');
           return [];
         }
 
-        final List<dynamic> recent =
-            bodyData['recent_attendance'] ?? bodyData['records'] ?? [];
         return recent.map<Map<String, dynamic>>((e) {
           return {
             'user_id': e['user_id'] ?? e['username'] ?? '',

@@ -14,32 +14,44 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     on<FetchDashboardStatsRequested>((event, emit) async {
       emit(DashboardStatsLoadInProgress());
       try {
-        final employees = await dashboardRepository.fetchAllEmployees();
-        int total = employees.length;
+        // Fetch employees and today's attendance records in parallel
+        final results = await Future.wait([
+          dashboardRepository.fetchAllEmployees(),
+          dashboardRepository.fetchTodayPresentUserIds(),
+        ]);
         
-        int present = 0;
-        int absent = 0;
-        try {
-          final analytics = await dashboardRepository.fetchAttendanceAnalytics();
-          print('DEBUG: Analytics map: $analytics');
-          // Map to the specific keys found in your Lambda response: total_records, present_count, absent_count
-if (analytics['present_today'] != null) {
-  present = (analytics['present_today'] as num).toInt();
-}
-if (analytics['absent_today'] != null) {
-  absent = (analytics['absent_today'] as num).toInt();
-}
-          print('DEBUG: Parsed present: $present, absent: $absent');
-        } catch (e) {
-          print('DEBUG: Analytics fetch/parse error: $e');
-          // Keep 0 if analytics API fails or isn't fully structured yet
-        }
+        final employees = results[0] as List<Employee>;
+        final presentIds = results[1] as List<String>;
+        
+        print('DEBUG: Present today IDs from kiosk: $presentIds');
+
+        // Cross-reference: mark each employee as Present or Absent based on real records
+        final enrichedEmployees = employees.map((emp) {
+          final isPresent = presentIds.any((id) =>
+            id.toLowerCase() == emp.cognitoUserId.toLowerCase() ||
+            id.toLowerCase() == emp.username.toLowerCase()
+          );
+          return Employee(
+            username: emp.username,
+            email: emp.email,
+            profile: emp.profile,
+            department: emp.department,
+            faceId: emp.faceId,
+            cognitoUserId: emp.cognitoUserId,
+            attendanceStatus: isPresent ? 'Present' : 'Absent',
+          );
+        }).toList();
+
+        final int present = enrichedEmployees.where((e) => e.attendanceStatus == 'Present').length;
+        final int absent = enrichedEmployees.where((e) => e.attendanceStatus == 'Absent').length;
+
+        print('DEBUG: Cross-referenced → Present: $present, Absent: $absent');
         
         emit(DashboardStatsLoadSuccess(
-          totalStudents: total, 
+          totalStudents: employees.length, 
           presentToday: present, 
           absentToday: absent,
-          employees: employees,
+          employees: enrichedEmployees,
         ));
       } catch (e) {
         emit(DashboardStatsLoadFailure(e.toString()));

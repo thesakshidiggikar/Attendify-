@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -20,15 +21,32 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> with SingleTick
   final GlobalKey<EmployeeRegistrationFormState> _formKey = GlobalKey<EmployeeRegistrationFormState>();
   int selectedIndex = 0;
   final TextEditingController _searchController = TextEditingController();
+  Timer? _refreshTimer;
+  bool _isRefreshing = false;
 
   @override
   void initState() {
     super.initState();
     context.read<DashboardBloc>().add(FetchDashboardStatsRequested());
+    // Auto-refresh every 30 seconds to pick up Kiosk attendance in real-time
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _triggerRefresh();
+    });
+  }
+
+  void _triggerRefresh() {
+    if (!mounted) return;
+    setState(() => _isRefreshing = true);
+    context.read<DashboardBloc>().add(FetchDashboardStatsRequested());
+    // Reset the spinning indicator after 1.5 seconds
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (mounted) setState(() => _isRefreshing = false);
+    });
   }
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -195,6 +213,31 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> with SingleTick
                 ],
               ),
               const Spacer(),
+              // Live Refresh button
+              Tooltip(
+                message: 'Refresh attendance data from Kiosk',
+                child: GestureDetector(
+                  onTap: _triggerRefresh,
+                  child: AnimatedRotation(
+                    turns: _isRefreshing ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 800),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      margin: const EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(AppConstants.primaryColor).withOpacity(0.08),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(AppConstants.primaryColor).withOpacity(0.2)),
+                      ),
+                      child: Icon(
+                        Icons.sync_rounded,
+                        color: const Color(AppConstants.primaryColor),
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(

@@ -46,12 +46,15 @@ class FaceDetectorServiceImpl implements FaceDetectorService {
     final format = InputImageFormat.nv21;
 
     // 3. ROBUST BYTE PACKING (YUV_420_888 to NV21)
-    // Manually concatenating Y, U, and V without plane padding
-    final WriteBuffer allBytes = WriteBuffer();
+    // For NV21 on Android, we typically have 2 planes (Y and VU interleaved).
+    // Concatenating them directly is the most efficient way to get the full buffer.
+    final int totalSize = image.planes.fold(0, (sum, plane) => sum + plane.bytes.length);
+    final Uint8List bytes = Uint8List(totalSize);
+    int offset = 0;
     for (final Plane plane in image.planes) {
-      allBytes.putUint8List(plane.bytes);
+      bytes.setAll(offset, plane.bytes);
+      offset += plane.bytes.length;
     }
-    final bytes = allBytes.done().buffer.asUint8List();
 
     return InputImage.fromBytes(
       bytes: bytes,

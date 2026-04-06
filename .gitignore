@@ -8,12 +8,18 @@
 build/
 *.lock
 
-# Environment secrets
+# Environment secrets — NEVER commit these
 .env
 .env.*
-! .env.example
+!.env.example
+
+# Internal / Private project documents — DO NOT COMMIT
 PROJECT_DEEPDIVE.md
 TESTING_SECURITY_REPORT.md
+WEEK_*.md
+*_PROGRESS_REPORT.md
+*_REPORT.md
+TEST_RESULTS.md
 
 # IDE specific
 .idea/

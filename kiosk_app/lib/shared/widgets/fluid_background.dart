@@ -61,7 +61,7 @@ class _FluidPainter extends CustomPainter {
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 100);
 
     final paint2 = Paint()
-      ..color = Color(AppConstants.secondaryAccentColor).withOpacity(0.1)
+      ..color = Color(AppConstants.accentColor).withOpacity(0.1)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 120);
 
     // Orbiting blob 1

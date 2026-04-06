@@ -151,6 +151,42 @@ class DashboardRepositoryImpl implements DashboardRepository {
   }
 
   @override
+  Future<List<String>> fetchTodayPresentUserIds() async {
+    try {
+      final resp = await http.get(
+        Uri.parse('$apiBaseUrl/recent-attendance'),
+        headers: {'Accept': 'application/json'},
+      );
+      if (resp.statusCode != 200) return [];
+
+      final decoded = jsonDecode(resp.body);
+      dynamic bodyData;
+      if (decoded is Map && decoded.containsKey('body')) {
+        final b = decoded['body'];
+        bodyData = b is String ? jsonDecode(b) : b;
+      } else {
+        bodyData = decoded;
+      }
+
+      List<dynamic> records = [];
+      if (bodyData is Map) {
+        records = bodyData['recent_attendance'] ?? bodyData['records'] ?? [];
+      } else if (bodyData is List) {
+        records = bodyData;
+      }
+
+      // Return list of user IDs who have been marked present today
+      return records
+          .map<String>((e) => (e['user_id'] ?? e['username'] ?? '').toString())
+          .where((id) => id.isNotEmpty)
+          .toList();
+    } catch (e) {
+      print('DEBUG: fetchTodayPresentUserIds error: $e');
+      return [];
+    }
+  }
+
+  @override
   Future<void> deleteEmployee(String userId) async {
     final resp = await http.post(
       Uri.parse('$apiBaseUrl/delete-user'),

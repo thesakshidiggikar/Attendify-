@@ -15,6 +15,21 @@ class _LoginScreenState extends State<LoginScreen> {
   String _newPassword = '';
   String? _errorMessage;
 
+  void _handleLogin() {
+    if (_formKey.currentState!.validate()) {
+      // Restore bypass for dev/testing
+      if (_username == 'admin' && _password == 'admin') {
+        context.read<AuthBloc>().add(AuthBypassRequested(_username));
+        return;
+      }
+
+      // Use the AuthBloc even for the bypass to ensure state is updated
+      context.read<AuthBloc>().add(
+        AuthLoginRequested(_username, _password),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -105,7 +120,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           label: 'Username or Email',
                           icon: Icons.person_outline_rounded,
                           onChanged: (val) => _username = val,
+                          onSubmitted: (_) => _handleLogin(),
                           validator: (val) => val == null || val.isEmpty ? 'Please enter your username' : null,
+                          textInputAction: TextInputAction.next,
                         ),
                         const SizedBox(height: 24),
                         _buildInputField(
@@ -113,7 +130,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           icon: Icons.lock_outline_rounded,
                           isPassword: true,
                           onChanged: (val) => _password = val,
+                          onSubmitted: (_) => _handleLogin(),
                           validator: (val) => val == null || val.isEmpty ? 'Please enter your password' : null,
+                          textInputAction: TextInputAction.done,
                         ),
                         const SizedBox(height: 16),
                         if (_errorMessage != null)
@@ -148,20 +167,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                               ),
-                                onPressed: () {
-                                  if (_formKey.currentState!.validate()) {
-                                    // Restore bypass for dev/testing
-                                    if (_username == 'admin' && _password == 'admin') {
-                                      context.read<AuthBloc>().add(AuthBypassRequested(_username));
-                                      return;
-                                    }
-
-                                    // Use the AuthBloc even for the bypass to ensure state is updated
-                                    context.read<AuthBloc>().add(
-                                      AuthLoginRequested(_username, _password),
-                                    );
-                                  }
-                                },
+                              onPressed: _handleLogin,
                               child: const Text('Sign In', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                             ),
                           ),
@@ -183,10 +189,14 @@ class _LoginScreenState extends State<LoginScreen> {
     bool isPassword = false,
     required void Function(String) onChanged,
     required String? Function(String?) validator,
+    void Function(String)? onSubmitted,
+    TextInputAction? textInputAction,
   }) {
     return TextFormField(
       obscureText: isPassword,
       onChanged: onChanged,
+      onFieldSubmitted: onSubmitted,
+      textInputAction: textInputAction,
       validator: validator,
       style: const TextStyle(color: Color(AppConstants.textPrimary), fontWeight: FontWeight.w500),
       decoration: InputDecoration(
