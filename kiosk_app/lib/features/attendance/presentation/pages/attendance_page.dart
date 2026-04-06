@@ -332,7 +332,15 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
         final isAlreadyMarked = message.contains('already');
 
         if (isAlreadyMarked) {
-          // Show amber "Already Marked" overlay — do NOT add to log
+          // Show amber "Already Marked" overlay and add to log in ORANGE
+          _recentLogs.insert(0, {
+            'name': name,
+            'user_id': userId ?? '',
+            'timestamp': DateTime.now().toIso8601String(),
+            'is_already_marked': true,
+          });
+          if (_recentLogs.length > 10) _recentLogs = _recentLogs.sublist(0, 10);
+
           setState(() {
             _successStudentName = name;
             _successUserId = userId;
@@ -343,11 +351,12 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
           // Reset failed attempts on any real success
           _failedAttempts = 0;
 
-          // Add to local recent logs only on a fresh mark
+          // Add to local recent logs for fresh mark (GREEN)
           _recentLogs.insert(0, {
             'name': name,
             'user_id': userId ?? '',
             'timestamp': DateTime.now().toIso8601String(),
+            'is_already_marked': false,
           });
           if (_recentLogs.length > 10) _recentLogs = _recentLogs.sublist(0, 10);
 
@@ -924,17 +933,22 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
                     ),
                     itemBuilder: (context, index) {
                       final log = _recentLogs[index];
+                      final isAlreadyMarked = log['is_already_marked'] == true;
+                      
+                      final color = isAlreadyMarked ? Colors.orange : const Color(AppConstants.successColor);
+                      final icon = isAlreadyMarked ? Icons.info_outline_rounded : Icons.check_rounded;
+
                       return Row(
                         children: [
                           Container(
                             padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
-                              color: const Color(AppConstants.successColor).withOpacity(0.15),
+                              color: color.withOpacity(0.15),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(
-                              Icons.check_rounded,
-                              color: Color(AppConstants.successColor),
+                            child: Icon(
+                              icon,
+                              color: color,
                               size: 14,
                             ),
                           ),
