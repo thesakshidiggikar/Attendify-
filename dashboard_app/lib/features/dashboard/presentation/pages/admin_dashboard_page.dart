@@ -242,26 +242,30 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> with SingleTick
                      ],
                    ),
                    const Spacer(),
-                   // Connection Status Badge
-                   Container(
-                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                     decoration: BoxDecoration(
-                       color: const Color(0xFF10B981).withOpacity(0.1),
-                       borderRadius: BorderRadius.circular(12),
-                     ),
-                     child: Row(
-                       children: [
-                         Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle)),
-                         const SizedBox(width: 8),
-                         const Text('DATABASE SYNCED', style: TextStyle(color: Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.w900)),
-                       ],
-                     ),
+                   // GLOBAL QUICK ACTIONS
+                   _HeaderActionButton(
+                     label: 'Enroll Student',
+                     icon: Icons.person_add_alt_1_rounded,
+                     color: const Color(0xFF6366F1),
+                     onTap: () => setState(() => selectedIndex = 5),
                    ),
-                   const SizedBox(width: 24),
-                   _buildHeaderAction(Icons.search_rounded),
                    const SizedBox(width: 12),
-                   _buildHeaderAction(Icons.notifications_none_rounded),
-                   const SizedBox(width: 24),
+                   _HeaderActionButton(
+                     label: 'Manual Registry',
+                     icon: Icons.history_edu_rounded,
+                     color: const Color(0xFF0F172A),
+                     onTap: () => setState(() => selectedIndex = 3),
+                   ),
+                   const SizedBox(width: 12),
+                   _HeaderActionButton(
+                     label: 'Insight Logs',
+                     icon: Icons.analytics_rounded,
+                     color: const Color(0xFF64748B),
+                     onTap: () => setState(() => selectedIndex = 2),
+                   ),
+                   const SizedBox(width: 32),
+                   Container(width: 1, height: 40, color: Colors.black.withOpacity(0.05)),
+                   const SizedBox(width: 32),
                    Row(
                      children: [
                         Column(
@@ -535,34 +539,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> with SingleTick
                   ),
                 ),
                 
-                const SizedBox(height: 40),
-  
-                const Text(
-                  'Quick Access',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    _QuickActionCard(
-                      title: 'Manual Mark',
-                      icon: Icons.history_edu_rounded,
-                      onTap: () => setState(() => selectedIndex = 3),
-                    ),
-                    const SizedBox(width: 20),
-                    _QuickActionCard(
-                      title: 'Enroll Student',
-                      icon: Icons.person_add_alt_rounded,
-                      onTap: () => setState(() => selectedIndex = 5),
-                    ),
-                    const SizedBox(width: 20),
-                    _QuickActionCard(
-                      title: 'Analytics Subsystem',
-                      icon: Icons.analytics_rounded,
-                      onTap: () => setState(() => selectedIndex = 2),
-                    ),
-                  ],
-                )
+                const SizedBox(height: 16),
               ],
             ),
           ),
@@ -1035,47 +1012,37 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-class _QuickActionCard extends StatelessWidget {
-  final String title;
+class _HeaderActionButton extends StatelessWidget {
+  final String label;
   final IconData icon;
+  final Color color;
   final VoidCallback onTap;
 
-  const _QuickActionCard({required this.title, required this.icon, required this.onTap});
+  const _HeaderActionButton({required this.label, required this.icon, required this.color, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.black.withOpacity(0.04)),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 20, offset: const Offset(0, 4)),
-            ],
-          ),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6366F1).withOpacity(0.08),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, color: const Color(0xFF6366F1), size: 28),
-              ),
-              const SizedBox(height: 16),
-              const Text('ACTION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
-              const SizedBox(height: 4),
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF1E293B), fontSize: 13)),
-            ],
-          ),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.1)),
         ),
-       ),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 13),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
