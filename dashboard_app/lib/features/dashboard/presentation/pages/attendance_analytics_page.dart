@@ -35,63 +35,74 @@ class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
           builder: (context, state) {
             if (state is DashboardStatsLoadSuccess) {
               return Padding(
-                padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 24.0),
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 32.0),
                 child: Column(
                   children: [
                     _buildAnalyticsHeader(isCompact),
-                    const SizedBox(height: 24),
-                    _buildMetricGrid(state, isCompact),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 32),
+                    // TIER 1: HIGH-VALUE METRICS
+                    _buildMetricRow(state),
+                    const SizedBox(height: 32),
+                    // TIER 2 & 3: INTELLIGENCE GRID
                     Expanded(
                       child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // Primary Section: Main Trends & Logs
+                          // MAJOR COLUMN: TRENDS & ANALYTICS
                           Expanded(
-                            flex: 3,
+                            flex: 7,
                             child: Column(
                               children: [
                                 Expanded(
                                   flex: 6,
-                                  child: _buildDashboardTile(
+                                  child: _buildBentoTile(
                                     title: 'ATTENDANCE VELOCITY',
+                                    subtitle: 'Operational trends and predictive scaling',
+                                    icon: Icons.show_chart_rounded,
                                     child: _AttendanceTrendChart(view: _selectedView, currentPercentage: state.totalStudents > 0 ? (state.presentToday/state.totalStudents*100) : 0),
                                   ),
                                 ),
-                                const SizedBox(height: 24),
+                                const SizedBox(height: 32),
                                 Expanded(
                                   flex: 4,
-                                  child: _buildDashboardTile(
-                                    title: 'AUDIT LOG: LIVE STREAM',
-                                    child: const _RecentActivityList(isFullView: false),
+                                  child: Row(
+                                    children: [
+                                       Expanded(
+                                         child: _buildBentoTile(
+                                           title: 'REGIONAL SYNC',
+                                           subtitle: 'Department-wise check-in health',
+                                           icon: Icons.bar_chart_rounded,
+                                           child: _DepartmentBarChart(deptStats: _calculateDeptStats(state.employees)),
+                                         ),
+                                       ),
+                                       const SizedBox(width: 32),
+                                       Expanded(
+                                         child: _buildBentoTile(
+                                           title: 'REGISTRY COMPOSITION',
+                                           subtitle: 'Static vs Active population',
+                                           icon: Icons.pie_chart_rounded,
+                                           child: _AttendanceDistributionPie(
+                                             present: state.presentToday,
+                                             absent: state.absentToday,
+                                             total: state.totalStudents,
+                                           ),
+                                         ),
+                                       ),
+                                    ],
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(width: 24),
-                          // Secondary Section: Performance & Composition
+                          const SizedBox(width: 32),
+                          // MINOR COLUMN: AUDIT & ALERTS
                           Expanded(
-                            flex: 2,
-                            child: Column(
-                              children: [
-                                Expanded(
-                                  child: _buildDashboardTile(
-                                    title: 'REGIONAL SYNC',
-                                    child: _DepartmentBarChart(deptStats: _calculateDeptStats(state.employees)),
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-                                Expanded(
-                                  child: _buildDashboardTile(
-                                    title: 'REGISTRY COMPOSITION',
-                                    child: _AttendanceDistributionPie(
-                                      present: state.presentToday,
-                                      absent: state.absentToday,
-                                      total: state.totalStudents,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            flex: 3,
+                            child: _buildBentoTile(
+                              title: 'AUDIT LOG',
+                              subtitle: 'Real-time synchronization stream',
+                              icon: Icons.receipt_long_rounded,
+                              child: const _RecentActivityList(isFullView: false),
                             ),
                           ),
                         ],
@@ -108,15 +119,15 @@ class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
     );
   }
 
-  Widget _buildDashboardTile({required String title, required Widget child}) {
+  Widget _buildBentoTile({required String title, required String subtitle, required IconData icon, required Widget child}) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.black.withOpacity(0.04)),
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: Colors.black.withOpacity(0.03)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 40, offset: const Offset(0, 10)),
+          BoxShadow(color: Colors.black.withOpacity(0.015), blurRadius: 40, offset: const Offset(0, 12)),
         ],
       ),
       child: Column(
@@ -124,12 +135,24 @@ class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
         children: [
           Row(
             children: [
-              Text(title, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8), letterSpacing: 1.5)),
+              Container(
+                 padding: const EdgeInsets.all(8),
+                 decoration: BoxDecoration(color: const Color(0xFF6366F1).withOpacity(0.08), shape: BoxShape.circle),
+                 child: Icon(icon, color: const Color(0xFF6366F1), size: 18),
+              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF1E293B), letterSpacing: 1)),
+                  Text(subtitle, style: const TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
+                ],
+              ),
               const Spacer(),
               if (title.contains('VELOCITY')) _buildViewToggle(true),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
           Expanded(child: child),
         ],
       ),
@@ -142,78 +165,67 @@ class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-             const Text('ANALYTICS ENGINE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF6366F1), letterSpacing: 2)),
-             const SizedBox(height: 8),
-             Text('Intelligence Overview', style: TextStyle(fontSize: isCompact ? 24 : 32, fontWeight: FontWeight.w900, color: const Color(0xFF1E293B), letterSpacing: -1)),
+             const Text('INTELLIGENCE ENGINE v2.0', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF6366F1), letterSpacing: 2)),
+             const SizedBox(height: 4),
+             Text('Fleet Performance Overview', style: TextStyle(fontSize: isCompact ? 24 : 36, fontWeight: FontWeight.w900, color: const Color(0xFF1E293B), letterSpacing: -1.5)),
           ],
         ),
         const Spacer(),
         if (!isCompact) ...[
-          _buildHeaderTool(Icons.calendar_today_rounded, 'LATEST SESSION'),
+          _buildHeaderTool(Icons.refresh_rounded, 'SYNC LIVE'),
           const SizedBox(width: 12),
-          _buildHeaderTool(Icons.download_rounded, 'CSV EXPORT'),
+          _buildHeaderTool(Icons.cloud_download_rounded, 'EXPORT PROTOCOL'),
         ]
       ],
     );
   }
 
-  Widget _buildHeaderTool(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.black.withOpacity(0.05)),
-      ),
-      child: Row(
-        children: [
-           Icon(icon, size: 16, color: const Color(0xFF64748B)),
-           const SizedBox(width: 8),
-           Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF1E293B))),
-        ],
-      ),
+  Widget _buildMetricRow(DashboardStatsLoadSuccess state) {
+    return Row(
+      children: [
+        _buildExpandingCard('Total Registry', '${state.totalStudents}', Icons.groups_rounded, const Color(0xFF6366F1)),
+        const SizedBox(width: 24),
+        _buildExpandingCard('Active Today', '${state.presentToday}', Icons.how_to_reg_rounded, const Color(0xFF10B981)),
+        const SizedBox(width: 24),
+        _buildExpandingCard('Deficit/Absent', '${state.absentToday}', Icons.warning_amber_rounded, const Color(0xFFF43F5E)),
+        const SizedBox(width: 24),
+        _buildExpandingCard('System Health', 'OPTIMAL', Icons.bolt_rounded, Colors.amber),
+      ],
     );
   }
 
-  Widget _buildMetricGrid(DashboardStatsLoadSuccess state, bool isCompact) {
-     final cards = [
-       _buildAnalyticsCard('Registry', '${state.totalStudents}', Icons.group_rounded, const Color(0xFF6366F1)),
-       _buildAnalyticsCard('Retention', '${state.totalStudents > 0 ? (state.presentToday/state.totalStudents*100).toInt() : 0}%', Icons.auto_graph_rounded, const Color(0xFF10B981)),
-       _buildAnalyticsCard('Absence', '${state.absentToday}', Icons.warning_amber_rounded, const Color(0xFFF43F5E)),
-       _buildAnalyticsCard('Cloud Latency', '142ms', Icons.bolt_rounded, Colors.amber),
-     ];
-
-     return Row(
-       children: cards.map((c) => Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 0), child: c))).toList(),
-     );
-  }
-
-  Widget _buildAnalyticsCard(String label, String value, IconData icon, Color color) {
-    return Container(
-      margin: const EdgeInsets.only(right: 16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black.withOpacity(0.04)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(12)),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8), letterSpacing: 0.5)),
-              Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
-            ],
-          )
-        ],
+  Widget _buildExpandingCard(String label, String value, IconData icon, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: color.withOpacity(0.1)),
+          boxShadow: [
+            BoxShadow(color: color.withOpacity(0.03), blurRadius: 40, offset: const Offset(0, 10)),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(16)),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(width: 24),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8), letterSpacing: 0.5)),
+                  const SizedBox(height: 4),
+                  Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
