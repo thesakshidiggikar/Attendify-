@@ -335,7 +335,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> with SingleTick
                     Expanded(child: _StatCard(
                       title: 'Total Students', 
                       value: '$totalCount', 
-                      icon: Icons.people_group_rounded, 
+                      icon: Icons.group_rounded, 
                       gradient: const [Color(0xFF6366F1), Color(0xFF818CF8)],
                     )),
                     const SizedBox(width: 24),
