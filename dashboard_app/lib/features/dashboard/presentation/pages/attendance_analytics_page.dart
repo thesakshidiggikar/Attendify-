@@ -35,173 +35,237 @@ class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
         final isCompact = constraints.maxWidth < 1100;
         final horizontalPadding = isCompact ? 24.0 : 40.0;
         
-        return Padding(
-          padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 32.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        return BlocBuilder<DashboardBloc, DashboardState>(
+          builder: (context, state) {
+            if (state is DashboardStatsLoadSuccess) {
+              return ListView(
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 32.0),
+                children: [
+                   _buildAnalyticsHeader(isCompact),
+                   const SizedBox(height: 32),
+                   _buildMetricGrid(state, isCompact),
+                   const SizedBox(height: 40),
+                   _buildViewSelector(isCompact),
+                   const SizedBox(height: 32),
+                   AnimatedSwitcher(
+                     duration: const Duration(milliseconds: 500),
+                     switchInCurve: Curves.easeOutQuart,
+                     switchOutCurve: Curves.easeInQuart,
+                     child: _buildBodyContent(state, isCompact),
+                   ),
+                ],
+              );
+            }
+            return const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1)));
+          }
+        );
+      },
+    );
+  }
+
+  Widget _buildAnalyticsHeader(bool isCompact) {
+    return Row(
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+             const Text('ANALYTICS ENGINE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF6366F1), letterSpacing: 2)),
+             const SizedBox(height: 8),
+             const Text('Intelligence Overview', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Color(0xFF1E293B), letterSpacing: -1)),
+             Text('Aggregated data insights for Academic Session 2026', style: TextStyle(color: const Color(0xFF64748B), fontSize: 13, fontWeight: FontWeight.w500)),
+          ],
+        ),
+        const Spacer(),
+        if (!isCompact) ...[
+          _buildHeaderTool(Icons.calendar_today_rounded, 'Last 30 Days'),
+          const SizedBox(width: 12),
+          _buildHeaderTool(Icons.download_rounded, 'Export JSON'),
+        ]
+      ],
+    );
+  }
+
+  Widget _buildHeaderTool(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.black.withOpacity(0.05)),
+      ),
+      child: Row(
+        children: [
+           Icon(icon, size: 16, color: const Color(0xFF64748B)),
+           const SizedBox(width: 8),
+           Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF1E293B))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricGrid(DashboardStatsLoadSuccess state, bool isCompact) {
+     final cards = [
+       _buildAnalyticsCard('Total Registry', '${state.totalStudents}', '+12% vs last month', Icons.group_rounded, const Color(0xFF6366F1)),
+       _buildAnalyticsCard('Retention Rate', '${state.totalStudents > 0 ? (state.presentToday/state.totalStudents*100).toInt() : 0}%', 'Live regional data', Icons.auto_graph_rounded, const Color(0xFF10B981)),
+       _buildAnalyticsCard('Absence Risk', '${state.absentToday}', 'Requires attention', Icons.warning_amber_rounded, const Color(0xFFF43F5E)),
+       _buildAnalyticsCard('Sync Latency', '142ms', 'Cloud performance', Icons.bolt_rounded, Colors.amber),
+     ];
+
+     return LayoutBuilder(
+       builder: (context, constraints) {
+         final crossAxisCount = constraints.maxWidth > 1200 ? 4 : (constraints.maxWidth > 800 ? 2 : 1);
+         return GridView.count(
+           shrinkWrap: true,
+           physics: const NeverScrollableScrollPhysics(),
+           crossAxisCount: crossAxisCount,
+           childAspectRatio: 2.2,
+           mainAxisSpacing: 16,
+           crossAxisSpacing: 16,
+           children: cards,
+         );
+       }
+     );
+  }
+
+  Widget _buildAnalyticsCard(String label, String value, String trend, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.black.withOpacity(0.02)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 40, offset: const Offset(0, 10)),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: color.withOpacity(0.08), shape: BoxShape.circle),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF94A3B8), letterSpacing: 0.5)),
+                const SizedBox(height: 4),
+                Text(value, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Color(0xFF1E293B), letterSpacing: -1)),
+                const SizedBox(height: 2),
+                Text(trend, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color)),
+              ],
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildViewSelector(bool isCompact) {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(18)),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: _displayModes.map((mode) {
+             final isSelected = _displayMode == mode;
+             return GestureDetector(
+               onTap: () => setState(() => _displayMode = mode),
+               child: AnimatedContainer(
+                 duration: const Duration(milliseconds: 300),
+                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                 decoration: BoxDecoration(
+                   color: isSelected ? Colors.white : Colors.transparent,
+                   borderRadius: BorderRadius.circular(14),
+                   boxShadow: isSelected ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))] : [],
+                 ),
+                 child: Text(
+                   mode,
+                   style: TextStyle(
+                     color: isSelected ? const Color(0xFF1E293B) : const Color(0xFF64748B),
+                     fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+                     fontSize: 13,
+                   ),
+                 ),
+               ),
+             );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBodyContent(DashboardStatsLoadSuccess state, bool isCompact) {
+    final deptStats = _calculateDeptStats(state.employees);
+    switch (_displayMode) {
+      case 'Graphs':
+        return _buildModernSection(
+          key: const ValueKey('graphs'),
+          title: 'Regional Performance',
+          child: _DepartmentBarChart(deptStats: deptStats),
+          height: 500,
+        );
+      case 'Distribution':
+        return _buildModernSection(
+          key: const ValueKey('pie'),
+          title: 'Registry Composition',
+          child: _AttendanceDistributionPie(
+            present: state.presentToday,
+            absent: state.absentToday,
+            total: state.totalStudents,
+          ),
+          height: 600,
+        );
+      case 'Activity Log':
+        return _buildModernSection(
+          key: const ValueKey('activity'),
+          title: 'High-Density Audit Log',
+          child: const _RecentActivityList(isFullView: true),
+          height: 700,
+        );
+      default:
+        return _buildModernSection(
+          key: const ValueKey('overview'),
+          title: 'Attendance Velocity (Daily)',
+          child: _AttendanceTrendChart(view: _selectedView, currentPercentage: state.totalStudents > 0 ? (state.presentToday/state.totalStudents*100) : 0),
+          height: 500,
+        );
+    }
+  }
+
+  Widget _buildModernSection({required String title, required Widget child, required double height, Key? key}) {
+    return Container(
+      key: key,
+      height: height,
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: Colors.black.withOpacity(0.02)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.015), blurRadius: 60, offset: const Offset(0, 30)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              _buildMetricStrip(isCompact),
-              const SizedBox(height: 32),
-              Center(
-                child: Wrap(
-                  spacing: 16,
-                  runSpacing: 16,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  alignment: WrapAlignment.center,
-                  children: [
-                    _buildDisplayModeTabs(isCompact),
-                    _buildViewToggle(isCompact),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
-              Expanded(
-                child: SizedBox.expand(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 400),
-                    layoutBuilder: (Widget? currentChild, List<Widget> previousChildren) {
-                      return Stack(
-                        fit: StackFit.expand,
-                        alignment: Alignment.center,
-                        children: <Widget>[
-                          ...previousChildren,
-                          if (currentChild != null) currentChild,
-                        ],
-                      );
-                    },
-                    transitionBuilder: (Widget child, Animation<double> animation) {
-                      return FadeTransition(
-                        opacity: animation,
-                        child: SlideTransition(
-                          position: Tween<Offset>(
-                            begin: const Offset(0.00, 0.05),
-                            end: Offset.zero,
-                          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-                          child: child,
-                        ),
-                      );
-                    },
-                    child: _buildBodyContent(),
-                  ),
-                ),
-              ),
+              Container(width: 4, height: 24, decoration: BoxDecoration(color: const Color(0xFF6366F1), borderRadius: BorderRadius.circular(2))),
+              const SizedBox(width: 16),
+              Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
+              const Spacer(),
+              _buildViewToggle(false), // Reused but styled
             ],
           ),
-        );
-      },
-    );
-  }
-
-  Widget _buildDisplayModeTabs(bool isCompact) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.grey.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(14),
+          const SizedBox(height: 40),
+          Expanded(child: child),
+        ],
       ),
-      child: Wrap(
-        children: _displayModes.map((mode) {
-          final isSelected = _displayMode == mode;
-          return GestureDetector(
-            onTap: () => setState(() => _displayMode = mode),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              padding: EdgeInsets.symmetric(horizontal: isCompact ? 16 : 24, vertical: 10),
-              decoration: BoxDecoration(
-                color: isSelected ? Colors.white : Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: isSelected ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))] : [],
-              ),
-              child: Text(
-                mode,
-                style: TextStyle(
-                  color: isSelected ? const Color(AppConstants.primaryColor) : const Color(AppConstants.textSecondary),
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildMetricStrip(bool isCompact) {
-    return BlocBuilder<DashboardBloc, DashboardState>(
-      builder: (context, state) {
-        int total = 0, present = 0, absent = 0;
-        if (state is DashboardStatsLoadSuccess) {
-          total = state.totalStudents;
-          present = state.presentToday;
-          absent = state.absentToday;
-        }
-        
-        return Wrap(
-          spacing: 16,
-          runSpacing: 16,
-          children: [
-            _buildMetricPill('Total Students', '$total', Icons.people_outline_rounded, const Color(AppConstants.primaryColor), isCompact),
-            _buildMetricPill('Present Today', '$present', Icons.check_circle_outline_rounded, const Color(AppConstants.accentColor), isCompact),
-            _buildMetricPill('Absent', '$absent', Icons.error_outline_rounded, Colors.redAccent, isCompact),
-            _buildMetricPill('Avg. Success', total > 0 ? '${((present/total)*100).toInt()}%' : '0%', Icons.bolt_rounded, Colors.amber, isCompact),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildBodyContent() {
-    return BlocBuilder<DashboardBloc, DashboardState>(
-      builder: (context, state) {
-        if (state is DashboardStatsLoadSuccess) {
-          final deptStats = _calculateDeptStats(state.employees);
-          
-          switch (_displayMode) {
-            case 'Graphs':
-              return _buildSectionCard(
-                key: const ValueKey('graphs'),
-                title: 'Department Performance',
-                subtitle: '${deptStats.length} departments tracked in real-time',
-                child: _DepartmentBarChart(deptStats: deptStats),
-              );
-            case 'Distribution':
-              return _buildSectionCard(
-                key: const ValueKey('pie'),
-                title: 'Status Distribution',
-                subtitle: 'Ratio of present vs absent across categories',
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 500),
-                    child: _AttendanceDistributionPie(
-                      present: state.presentToday,
-                      absent: state.absentToday,
-                      total: state.totalStudents,
-                    ),
-                  ),
-                ),
-              );
-            case 'Activity Log':
-              return _buildSectionCard(
-                key: const ValueKey('list'),
-                title: 'Daily Attendance Log',
-                subtitle: 'Real-time student check-ins for ${DateTime.now().toLocal().toString().split(' ')[0]}',
-                child: const _RecentActivityList(isFullView: true),
-              );
-            default: // Overview
-              return _buildSectionCard(
-                key: const ValueKey('overview'),
-                title: 'Live Attendance Snapshot',
-                subtitle: 'Today\'s performance: ${state.totalStudents > 0 ? (state.presentToday/state.totalStudents*100).toInt() : 0}% success rate',
-                child: _AttendanceTrendChart(
-                  view: _selectedView, 
-                  currentPercentage: state.totalStudents > 0 ? (state.presentToday/state.totalStudents*100) : 0,
-                ),
-              );
-          }
-        }
-        return const Center(child: CircularProgressIndicator());
-      },
     );
   }
 
