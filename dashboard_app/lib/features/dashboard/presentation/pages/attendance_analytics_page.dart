@@ -29,73 +29,11 @@ class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isCompact = constraints.maxWidth < 1100;
-        final horizontalPadding = isCompact ? 20.0 : 40.0;
+        final horizontalPadding = isCompact ? 24.0 : 40.0;
         
         return BlocBuilder<DashboardBloc, DashboardState>(
           builder: (context, state) {
             if (state is DashboardStatsLoadSuccess) {
-              return Padding(
-                padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 32.0),
-                child: Column(
-                  children: [
-                    _buildAnalyticsHeader(isCompact),
-                    const SizedBox(height: 32),
-                    // TIER 1: HIGH-VALUE METRICS
-                    _buildMetricRow(state),
-                    const SizedBox(height: 32),
-                    // TIER 2 & 3: INTELLIGENCE GRID
-                    Expanded(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // MAJOR COLUMN: TRENDS & ANALYTICS
-                          Expanded(
-                            flex: 7,
-                            child: Column(
-                              children: [
-                                Expanded(
-                                  flex: 6,
-                                  child: _buildBentoTile(
-                                    title: 'ATTENDANCE VELOCITY',
-                                    subtitle: 'Operational trends and predictive scaling',
-                                    icon: Icons.show_chart_rounded,
-                                    child: _AttendanceTrendChart(view: _selectedView, currentPercentage: state.totalStudents > 0 ? (state.presentToday/state.totalStudents*100) : 0),
-                                  ),
-                                ),
-                                const SizedBox(height: 32),
-                                Expanded(
-                                  flex: 4,
-                                  child: Row(
-                                    children: [
-                                       Expanded(
-                                         child: _buildBentoTile(
-                                           title: 'REGIONAL SYNC',
-                                           subtitle: 'Department-wise check-in health',
-                                           icon: Icons.bar_chart_rounded,
-                                           child: _DepartmentBarChart(deptStats: _calculateDeptStats(state.employees)),
-                                         ),
-                                       ),
-                                       const SizedBox(width: 32),
-                                       Expanded(
-                                         child: _buildBentoTile(
-                                           title: 'REGISTRY COMPOSITION',
-                                           subtitle: 'Static vs Active population',
-                                           icon: Icons.pie_chart_rounded,
-                                           child: _AttendanceDistributionPie(
-                                             present: state.presentToday,
-                                             absent: state.absentToday,
-                                             total: state.totalStudents,
-                                           ),
-                                         ),
-                                       ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 32),
-                          // MINOR COLUMN: AUDIT & ALERTS
               return ListView(
                 padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 40.0),
                 physics: const BouncingScrollPhysics(),
