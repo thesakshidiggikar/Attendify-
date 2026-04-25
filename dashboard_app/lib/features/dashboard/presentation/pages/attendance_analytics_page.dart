@@ -14,15 +14,8 @@ class AttendanceAnalyticsPage extends StatefulWidget {
   
 }
 
-class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
-
   String _selectedView = 'Daily';
   final List<String> _views = ['Daily', 'Weekly', 'Monthly'];
-
-  String _displayMode = 'Overview';
-  final List<String> _displayModes = ['Overview', 'Graphs', 'Distribution', 'Activity Log'];
-
-  String _currentSort = 'Time Descending';
 
   @override
   void initState() {
@@ -35,33 +28,110 @@ class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isCompact = constraints.maxWidth < 1100;
-        final horizontalPadding = isCompact ? 24.0 : 40.0;
+        final horizontalPadding = isCompact ? 20.0 : 40.0;
         
         return BlocBuilder<DashboardBloc, DashboardState>(
           builder: (context, state) {
             if (state is DashboardStatsLoadSuccess) {
-              return ListView(
-                padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 32.0),
-                children: [
-                   _buildAnalyticsHeader(isCompact),
-                   const SizedBox(height: 32),
-                   _buildMetricGrid(state, isCompact),
-                   const SizedBox(height: 40),
-                   _buildViewSelector(isCompact),
-                   const SizedBox(height: 32),
-                   AnimatedSwitcher(
-                     duration: const Duration(milliseconds: 500),
-                     switchInCurve: Curves.easeOutQuart,
-                     switchOutCurve: Curves.easeInQuart,
-                     child: _buildBodyContent(state, isCompact),
-                   ),
-                ],
+              return Padding(
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 24.0),
+                child: Column(
+                  children: [
+                    _buildAnalyticsHeader(isCompact),
+                    const SizedBox(height: 24),
+                    _buildMetricGrid(state, isCompact),
+                    const SizedBox(height: 24),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          // Primary Section: Main Trends & Logs
+                          Expanded(
+                            flex: 3,
+                            child: Column(
+                              children: [
+                                Expanded(
+                                  flex: 6,
+                                  child: _buildDashboardTile(
+                                    title: 'ATTENDANCE VELOCITY',
+                                    child: _AttendanceTrendChart(view: _selectedView, currentPercentage: state.totalStudents > 0 ? (state.presentToday/state.totalStudents*100) : 0),
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                Expanded(
+                                  flex: 4,
+                                  child: _buildDashboardTile(
+                                    title: 'AUDIT LOG: LIVE STREAM',
+                                    child: const _RecentActivityList(isFullView: false),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 24),
+                          // Secondary Section: Performance & Composition
+                          Expanded(
+                            flex: 2,
+                            child: Column(
+                              children: [
+                                Expanded(
+                                  child: _buildDashboardTile(
+                                    title: 'REGIONAL SYNC',
+                                    child: _DepartmentBarChart(deptStats: _calculateDeptStats(state.employees)),
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                Expanded(
+                                  child: _buildDashboardTile(
+                                    title: 'REGISTRY COMPOSITION',
+                                    child: _AttendanceDistributionPie(
+                                      present: state.presentToday,
+                                      absent: state.absentToday,
+                                      total: state.totalStudents,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               );
             }
             return const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1)));
-          }
+          },
         );
       },
+    );
+  }
+
+  Widget _buildDashboardTile({required String title, required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.black.withOpacity(0.04)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 40, offset: const Offset(0, 10)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(title, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8), letterSpacing: 1.5)),
+              const Spacer(),
+              if (title.contains('VELOCITY')) _buildViewToggle(true),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Expanded(child: child),
+        ],
+      ),
     );
   }
 
@@ -73,15 +143,14 @@ class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
           children: [
              const Text('ANALYTICS ENGINE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF6366F1), letterSpacing: 2)),
              const SizedBox(height: 8),
-             const Text('Intelligence Overview', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Color(0xFF1E293B), letterSpacing: -1)),
-             Text('Aggregated data insights for Academic Session 2026', style: TextStyle(color: const Color(0xFF64748B), fontSize: 13, fontWeight: FontWeight.w500)),
+             Text('Intelligence Overview', style: TextStyle(fontSize: isCompact ? 24 : 32, fontWeight: FontWeight.w900, color: const Color(0xFF1E293B), letterSpacing: -1)),
           ],
         ),
         const Spacer(),
         if (!isCompact) ...[
-          _buildHeaderTool(Icons.calendar_today_rounded, 'Last 30 Days'),
+          _buildHeaderTool(Icons.calendar_today_rounded, 'LATEST SESSION'),
           const SizedBox(width: 12),
-          _buildHeaderTool(Icons.download_rounded, 'Export JSON'),
+          _buildHeaderTool(Icons.download_rounded, 'CSV EXPORT'),
         ]
       ],
     );
@@ -107,236 +176,42 @@ class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
 
   Widget _buildMetricGrid(DashboardStatsLoadSuccess state, bool isCompact) {
      final cards = [
-       _buildAnalyticsCard('Total Registry', '${state.totalStudents}', '+12% vs last month', Icons.group_rounded, const Color(0xFF6366F1)),
-       _buildAnalyticsCard('Retention Rate', '${state.totalStudents > 0 ? (state.presentToday/state.totalStudents*100).toInt() : 0}%', 'Live regional data', Icons.auto_graph_rounded, const Color(0xFF10B981)),
-       _buildAnalyticsCard('Absence Risk', '${state.absentToday}', 'Requires attention', Icons.warning_amber_rounded, const Color(0xFFF43F5E)),
-       _buildAnalyticsCard('Sync Latency', '142ms', 'Cloud performance', Icons.bolt_rounded, Colors.amber),
+       _buildAnalyticsCard('Registry', '${state.totalStudents}', Icons.group_rounded, const Color(0xFF6366F1)),
+       _buildAnalyticsCard('Retention', '${state.totalStudents > 0 ? (state.presentToday/state.totalStudents*100).toInt() : 0}%', Icons.auto_graph_rounded, const Color(0xFF10B981)),
+       _buildAnalyticsCard('Absence', '${state.absentToday}', Icons.warning_amber_rounded, const Color(0xFFF43F5E)),
+       _buildAnalyticsCard('Cloud Latency', '142ms', Icons.bolt_rounded, Colors.amber),
      ];
 
-     return LayoutBuilder(
-       builder: (context, constraints) {
-         final crossAxisCount = constraints.maxWidth > 1200 ? 4 : (constraints.maxWidth > 800 ? 2 : 1);
-         return GridView.count(
-           shrinkWrap: true,
-           physics: const NeverScrollableScrollPhysics(),
-           crossAxisCount: crossAxisCount,
-           childAspectRatio: 2.2,
-           mainAxisSpacing: 16,
-           crossAxisSpacing: 16,
-           children: cards,
-         );
-       }
+     return Row(
+       children: cards.map((c) => Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 0), child: c))).toList(),
      );
   }
 
-  Widget _buildAnalyticsCard(String label, String value, String trend, IconData icon, Color color) {
+  Widget _buildAnalyticsCard(String label, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      margin: const EdgeInsets.only(right: 16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.black.withOpacity(0.02)),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 40, offset: const Offset(0, 10)),
-        ],
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.black.withOpacity(0.04)),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: color.withOpacity(0.08), shape: BoxShape.circle),
-            child: Icon(icon, color: color, size: 24),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(12)),
+            child: Icon(icon, color: color, size: 20),
           ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF94A3B8), letterSpacing: 0.5)),
-                const SizedBox(height: 4),
-                Text(value, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Color(0xFF1E293B), letterSpacing: -1)),
-                const SizedBox(height: 2),
-                Text(trend, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color)),
-              ],
-            ),
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _buildViewSelector(bool isCompact) {
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(18)),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: _displayModes.map((mode) {
-             final isSelected = _displayMode == mode;
-             return GestureDetector(
-               onTap: () => setState(() => _displayMode = mode),
-               child: AnimatedContainer(
-                 duration: const Duration(milliseconds: 300),
-                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                 decoration: BoxDecoration(
-                   color: isSelected ? Colors.white : Colors.transparent,
-                   borderRadius: BorderRadius.circular(14),
-                   boxShadow: isSelected ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))] : [],
-                 ),
-                 child: Text(
-                   mode,
-                   style: TextStyle(
-                     color: isSelected ? const Color(0xFF1E293B) : const Color(0xFF64748B),
-                     fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
-                     fontSize: 13,
-                   ),
-                 ),
-               ),
-             );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBodyContent(DashboardStatsLoadSuccess state, bool isCompact) {
-    var sortedEmployees = List<Employee>.from(state.employees);
-    if (_displayMode == 'Activity Log') {
-      if (_currentSort == 'Alphabetical') {
-        sortedEmployees.sort((a, b) => a.username.compareTo(b.username));
-      } else if (_currentSort == 'Department') {
-        sortedEmployees.sort((a, b) => a.department.compareTo(b.department));
-      } else if (_currentSort == 'Time Ascending') {
-        sortedEmployees.sort((a, b) => (a.attendanceTime ?? '').compareTo(b.attendanceTime ?? ''));
-      }
-      // Default is essentially descending by date or original order
-    }
-
-    final deptStats = _calculateDeptStats(state.employees);
-    switch (_displayMode) {
-      case 'Graphs':
-        return _buildModernSection(
-          key: const ValueKey('graphs'),
-          title: 'Regional Performance',
-          child: _DepartmentBarChart(deptStats: deptStats),
-          height: 500,
-        );
-      case 'Distribution':
-        return _buildModernSection(
-          key: const ValueKey('pie'),
-          title: 'Registry Composition',
-          child: _AttendanceDistributionPie(
-            present: state.presentToday,
-            absent: state.absentToday,
-            total: state.totalStudents,
-          ),
-          height: 600,
-        );
-      case 'Activity Log':
-        return _buildModernSection(
-          key: const ValueKey('activity'),
-          title: 'High-Density Audit Log',
-          child: _RecentActivityList(isFullView: true, employees: sortedEmployees),
-          height: 700,
-          showSort: true,
-        );
-      default:
-        return _buildModernSection(
-          key: const ValueKey('overview'),
-          title: 'Attendance Velocity (Daily)',
-          child: _AttendanceTrendChart(view: _selectedView, currentPercentage: state.totalStudents > 0 ? (state.presentToday/state.totalStudents*100) : 0),
-          height: 500,
-        );
-    }
-  }
-
-  Widget _buildModernSection({required String title, required Widget child, required double height, bool showSort = false, Key? key}) {
-    return Container(
-      key: key,
-      height: height,
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: Colors.black.withOpacity(0.02)),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.015), blurRadius: 60, offset: const Offset(0, 30)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(width: 4, height: 24, decoration: BoxDecoration(color: const Color(0xFF6366F1), borderRadius: BorderRadius.circular(2))),
-              const SizedBox(width: 16),
-              Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
-              const Spacer(),
-              if (showSort) _buildSortDropdown(),
-              const SizedBox(width: 12),
-              _buildViewToggle(false), // Reused but styled
+              Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8), letterSpacing: 0.5)),
+              Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
             ],
-          ),
-          const SizedBox(height: 40),
-          Expanded(child: child),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSortDropdown() {
-    return PopupMenuButton<String>(
-      onSelected: (val) => setState(() => _currentSort = val),
-      tooltip: 'Sort Options',
-      offset: const Offset(0, 45),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 20,
-      shadowColor: Colors.black26,
-      itemBuilder: (ctx) => [
-        const PopupMenuItem(enabled: false, child: Text('Sort by', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 1))),
-        _buildSortItem('Time Descending', Icons.timer_rounded),
-        _buildSortItem('Time Ascending', Icons.timer_outlined),
-        _buildSortItem('Alphabetical', Icons.sort_by_alpha_rounded),
-        _buildSortItem('Department', Icons.business_rounded),
-      ],
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.swap_vert_rounded, size: 16, color: Color(0xFF64748B)),
-            const SizedBox(width: 8),
-            Text(
-              _currentSort,
-              style: const TextStyle(color: Color(0xFF1E293B), fontSize: 12, fontWeight: FontWeight.w800),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  PopupMenuItem<String> _buildSortItem(String label, IconData icon) {
-    final isSelected = _currentSort == label;
-    return PopupMenuItem(
-      value: label,
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: isSelected ? const Color(0xFF6366F1) : const Color(0xFF64748B)),
-          const SizedBox(width: 12),
-          Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? const Color(0xFF1E293B) : const Color(0xFF64748B),
-              fontWeight: isSelected ? FontWeight.w900 : FontWeight.w500,
-              fontSize: 13,
-            ),
-          ),
+          )
         ],
       ),
     );
