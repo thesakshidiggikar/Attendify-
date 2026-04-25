@@ -87,50 +87,52 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> with SingleTick
 
   Widget _buildPremiumSidebar() {
     return Container(
-      width: 280,
-      color: const Color(AppConstants.sidebarColor),
+      width: 260,
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 40, offset: const Offset(4, 0)),
+        ],
+      ),
       child: Column(
         children: [
-          const SizedBox(height: 48),
+          const SizedBox(height: 60),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
+            padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(AppConstants.primaryColor), Color(AppConstants.primaryLight)],
+                      colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],
                     ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(color: const Color(AppConstants.primaryColor).withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))
-                    ]
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Icon(Icons.school_rounded, color: Colors.white, size: 28),
+                  child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 24),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 14),
                 const Text(
                   'FaceAttend',
                   style: TextStyle(
-                    color: Color(AppConstants.textPrimary),
+                    color: Colors.white,
                     fontWeight: FontWeight.w900,
-                    fontSize: 22,
-                    letterSpacing: 0.5,
+                    fontSize: 20,
+                    letterSpacing: -0.5,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 64),
+          const SizedBox(height: 50),
           _SidebarItem(
-            icon: Icons.grid_view_rounded,
+            icon: Icons.dashboard_customize_rounded,
             label: 'Overview',
             isSelected: selectedIndex == 0,
             onTap: () => setState(() => selectedIndex = 0),
           ),
           _SidebarItem(
-            icon: Icons.people_alt_rounded,
+            icon: Icons.person_search_rounded,
             label: 'Students',
             isSelected: selectedIndex == 1,
             onTap: () {
@@ -139,24 +141,48 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> with SingleTick
             },
           ),
           _SidebarItem(
-            icon: Icons.insights_rounded,
+            icon: Icons.auto_graph_rounded,
             label: 'Analytics',
             isSelected: selectedIndex == 2,
             onTap: () => setState(() => selectedIndex = 2),
           ),
           _SidebarItem(
-            icon: Icons.edit_calendar_rounded,
-            label: 'Mark Attendance',
+            icon: Icons.verified_user_rounded,
+            label: 'Manual Registry',
             isSelected: selectedIndex == 3,
             onTap: () => setState(() => selectedIndex = 3),
           ),
           _SidebarItem(
-            icon: Icons.person_add_alt_1_rounded,
-            label: 'Add Student',
+            icon: Icons.person_add_rounded,
+            label: 'Enrollment',
             isSelected: selectedIndex == 5,
             onTap: () => setState(() => selectedIndex = 5),
           ),
           const Spacer(),
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                children: [
+                   const Text('System Status', style: TextStyle(color: Colors.white30, fontSize: 10, fontWeight: FontWeight.bold)),
+                   const SizedBox(height: 8),
+                   Row(
+                     mainAxisAlignment: MainAxisAlignment.center,
+                     children: [
+                       Container(width: 8, height: 8, decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle)),
+                       const SizedBox(width: 8),
+                       const Text('ACTIVE CLOUD', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+                     ],
+                   )
+                ],
+              ),
+            ),
+          ),
           _SidebarItem(
             icon: Icons.logout_rounded,
             label: 'Logout',
@@ -177,104 +203,102 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> with SingleTick
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, state) {
         String userName = 'User';
-        String userRole = 'Teacher';
-
+        String userRole = 'Administrator';
         if (state is AuthAuthenticated) {
           userName = state.user.name;
-          userRole = state.user.role == 'admin' ? 'Administrator' : 'Teacher';
+          userRole = state.user.role == 'admin' ? 'Super Admin' : 'Staff Admin';
         }
 
-        return Container(
-          height: 100,
-          padding: const EdgeInsets.symmetric(horizontal: 40),
-          color: const Color(AppConstants.backgroundColor),
-          child: Row(
-            children: [
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
+        return ClipRRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              height: 90,
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.8),
+                border: Border(bottom: BorderSide(color: Colors.black.withOpacity(0.05))),
+              ),
+              child: Row(
                 children: [
-                  Text(
-                    'Good Morning, $userRole',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: Color(AppConstants.textSecondary),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _getPageTitle(selectedIndex),
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Color(AppConstants.textPrimary),
-                    ),
-                  ),
+                   Column(
+                     mainAxisAlignment: MainAxisAlignment.center,
+                     crossAxisAlignment: CrossAxisAlignment.start,
+                     children: [
+                       Text(
+                         'SESSION: ${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')} IST',
+                         style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: const Color(0xFF6366F1), letterSpacing: 1.5),
+                       ),
+                       const SizedBox(height: 4),
+                       Text(
+                         _getPageTitle(selectedIndex),
+                         style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF1E293B), letterSpacing: -0.5),
+                       ),
+                     ],
+                   ),
+                   const Spacer(),
+                   // Connection Status Badge
+                   Container(
+                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                     decoration: BoxDecoration(
+                       color: const Color(0xFF10B981).withOpacity(0.1),
+                       borderRadius: BorderRadius.circular(12),
+                     ),
+                     child: Row(
+                       children: [
+                         Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle)),
+                         const SizedBox(width: 8),
+                         const Text('DATABASE SYNCED', style: TextStyle(color: Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.w900)),
+                       ],
+                     ),
+                   ),
+                   const SizedBox(width: 24),
+                   _buildHeaderAction(Icons.search_rounded),
+                   const SizedBox(width: 12),
+                   _buildHeaderAction(Icons.notifications_none_rounded),
+                   const SizedBox(width: 24),
+                   Row(
+                     children: [
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(userName, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF1E293B))),
+                            Text(userRole, style: const TextStyle(color: Color(0xFF64748B), fontSize: 11, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                        const SizedBox(width: 16),
+                        Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: const Color(0xFF6366F1), width: 2),
+                          ),
+                          child: const CircleAvatar(
+                             radius: 18,
+                             backgroundColor: Color(0xFFF1F5F9),
+                             child: Icon(Icons.person_rounded, color: Color(0xFF6366F1), size: 20),
+                          ),
+                        ),
+                     ],
+                   )
                 ],
               ),
-              const Spacer(),
-              // Live Refresh button
-              Tooltip(
-                message: 'Refresh attendance data from Kiosk',
-                child: GestureDetector(
-                  onTap: _triggerRefresh,
-                  child: AnimatedRotation(
-                    turns: _isRefreshing ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 800),
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      margin: const EdgeInsets.only(right: 12),
-                      decoration: BoxDecoration(
-                        color: const Color(AppConstants.primaryColor).withOpacity(0.08),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: const Color(AppConstants.primaryColor).withOpacity(0.2)),
-                      ),
-                      child: Icon(
-                        Icons.sync_rounded,
-                        color: const Color(AppConstants.primaryColor),
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.02),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    const CircleAvatar(
-                      radius: 18,
-                      backgroundColor: Color(AppConstants.primaryLight),
-                      child: Icon(Icons.person, color: Colors.white, size: 20),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      userName,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: Color(AppConstants.textPrimary),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildHeaderAction(IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(icon, size: 18, color: const Color(0xFF64748B)),
     );
   }
 
@@ -416,102 +440,93 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> with SingleTick
                   ),
                 ),
                 
-                // Table Body
+                // Modern Data Grid Body
                 Container(
-                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(24), bottomRight: Radius.circular(24)),
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 40, offset: const Offset(0, 20)),
+                      BoxShadow(color: Colors.black.withOpacity(0.015), blurRadius: 40, offset: const Offset(0, 20)),
                     ],
                   ),
-                  child: Theme(
-                    data: Theme.of(context).copyWith(
-                      dividerColor: Colors.black.withOpacity(0.03),
-                    ),
-                    child: DataTable(
-                      horizontalMargin: 24,
-                      columnSpacing: 24,
-                      dataRowHeight: 72,
-                      headingRowHeight: 0, // Hidden as we built custom header
-                      columns: const [
-                        DataColumn(label: SizedBox.shrink()),
-                        DataColumn(label: SizedBox.shrink()),
-                        DataColumn(label: SizedBox.shrink()),
-                        DataColumn(label: SizedBox.shrink()),
-                        DataColumn(label: SizedBox.shrink()),
-                      ],
-                      rows: pagedStudents.map((emp) {
-                        final isPresent = emp.attendanceStatus == 'Present';
-                        return DataRow(
-                          cells: [
-                            DataCell(
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF6366F1).withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: const Center(child: Icon(Icons.badge_rounded, color: Color(0xFF6366F1), size: 18)),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const Text('PRN ID', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                                      Text(emp.username, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            DataCell(
-                              Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('STUDENT NAME', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                                  Text(emp.username, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                                ],
-                              ),
-                            ),
-                            DataCell(
-                              Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('DEPARTMENT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                                  Text(emp.department, style: const TextStyle(color: Color(0xFF64748B), fontSize: 13, fontWeight: FontWeight.w500)),
-                                ],
-                              ),
-                            ),
-                            DataCell(Center(child: _buildStatusBadge(emp.attendanceStatus))),
-                            DataCell(
-                              Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  const Text('TIMESTAMP', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                                  Text(
-                                    _formatTimestamp(emp.attendanceTime),
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w800, 
-                                      fontSize: 13, 
-                                      color: isPresent ? const Color(0xFF10B981) : Colors.grey,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        );
-                      }).toList(),
-                    ),
+                  child: Column(
+                    children: [
+                       // Table Header Labels
+                       Padding(
+                         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                         child: Row(
+                           children: const [
+                             Expanded(flex: 3, child: Text('PRN & STUDENT', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF94A3B8), letterSpacing: 0.5))),
+                             Expanded(flex: 2, child: Text('DEPARTMENT', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF94A3B8), letterSpacing: 0.5))),
+                             Expanded(flex: 2, child: Center(child: Text('VERIFICATION', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF94A3B8), letterSpacing: 0.5)))),
+                             Expanded(flex: 2, child: Align(alignment: Alignment.centerRight, child: Text('IST TIME', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF94A3B8), letterSpacing: 0.5)))),
+                           ],
+                         ),
+                       ),
+                       const Divider(height: 1),
+                       ...pagedStudents.map((emp) {
+                         final isPresent = emp.attendanceStatus == 'Present';
+                         return Container(
+                           height: 80,
+                           decoration: BoxDecoration(
+                             border: Border(bottom: BorderSide(color: Colors.black.withOpacity(0.02))),
+                           ),
+                           child: Row(
+                             children: [
+                               Expanded(
+                                 flex: 3,
+                                 child: Row(
+                                   children: [
+                                     Container(
+                                       width: 44,
+                                       height: 44,
+                                       decoration: BoxDecoration(
+                                         gradient: LinearGradient(colors: [const Color(0xFF6366F1).withOpacity(0.1), const Color(0xFF4F46E5).withOpacity(0.05)]),
+                                         borderRadius: BorderRadius.circular(12),
+                                       ),
+                                       child: Center(child: Text(emp.username[0].toUpperCase(), style: const TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.w900))),
+                                     ),
+                                     const SizedBox(width: 16),
+                                     Column(
+                                       mainAxisAlignment: MainAxisAlignment.center,
+                                       crossAxisAlignment: CrossAxisAlignment.start,
+                                       children: [
+                                          Text(emp.username, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF1E293B))),
+                                          Text('ID: ${emp.cognitoUserId}', style: TextStyle(color: const Color(0xFF64748B), fontSize: 11, fontWeight: FontWeight.w500)),
+                                       ],
+                                     ),
+                                   ],
+                                 ),
+                               ),
+                               Expanded(
+                                 flex: 2,
+                                 child: Text(emp.department, style: const TextStyle(color: Color(0xFF64748B), fontSize: 13, fontWeight: FontWeight.w600)),
+                               ),
+                               Expanded(
+                                 flex: 2,
+                                 child: Center(child: _buildStatusBadge(emp.attendanceStatus)),
+                               ),
+                               Expanded(
+                                 flex: 2,
+                                 child: Column(
+                                   mainAxisAlignment: MainAxisAlignment.center,
+                                   crossAxisAlignment: CrossAxisAlignment.end,
+                                   children: [
+                                      Text(
+                                        _formatTimestamp(emp.attendanceTime),
+                                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: isPresent ? const Color(0xFF10B981) : const Color(0xFF64748B).withOpacity(0.5)),
+                                      ),
+                                      if (isPresent) const Text('STABLE CONNECT', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF10B981))),
+                                   ],
+                                 ),
+                               ),
+                             ],
+                           ),
+                         );
+                       }).toList(),
+                       const SizedBox(height: 16),
+                    ],
                   ),
                 ),
                 

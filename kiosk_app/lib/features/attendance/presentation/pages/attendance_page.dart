@@ -151,7 +151,12 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
       final oldController = _controller;
       _controller = null; // Detach immediately 
       try {
-        await oldController?.dispose();
+        if (oldController!.value.isInitialized) {
+          if (oldController.value.isStreamingImages) {
+            await oldController.stopImageStream();
+          }
+        }
+        await oldController.dispose();
       } catch (e) {
         debugPrint('Camera disposal error: $e');
       }
@@ -204,7 +209,7 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
         }
       }
 
-      if (mounted) {
+      if (mounted && _controller != null) {
         setState(() {
           _isCameraInitialized = true;
           _statusMessage = 'READY — SHOW YOUR FACE';
@@ -212,8 +217,12 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
 
         if (kIsWeb || defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.linux) {
           _startWebFaceDetection();
-        } else {
-          _controller!.startImageStream(_processNativeCameraImage);
+        } else if (_controller!.value.isInitialized) {
+          try {
+            await _controller!.startImageStream(_processNativeCameraImage);
+          } catch (e) {
+            debugPrint('Stream start error: $e');
+          }
         }
       }
     } catch (e) {
