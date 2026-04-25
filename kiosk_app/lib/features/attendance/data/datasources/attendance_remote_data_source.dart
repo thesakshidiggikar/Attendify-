@@ -37,16 +37,19 @@ class AttendanceRemoteDataSource {
     print('DEBUG: mark_attendance body=${response.body}');
 
     if (response.statusCode != 200) {
-      // Try to parse error message from body
+      String errorMessage = 'Failed to mark attendance: ${response.statusCode}';
       try {
         final errDecoded = jsonDecode(response.body);
         final errBody = errDecoded is Map && errDecoded.containsKey('body') 
             ? (errDecoded['body'] is String ? jsonDecode(errDecoded['body']) : errDecoded['body'])
             : errDecoded;
-        throw Exception(errBody['message'] ?? errBody['error'] ?? 'Failed to mark attendance');
-      } catch (e) {
-        throw Exception('Failed to mark attendance: ${response.statusCode}');
+        if (errBody != null) {
+          errorMessage = errBody['message'] ?? errBody['error'] ?? errorMessage;
+        }
+      } catch (_) {
+        // Keep default statusCode error message if JSON parsing fails
       }
+      throw Exception(errorMessage);
     }
 
     final decoded = jsonDecode(response.body);

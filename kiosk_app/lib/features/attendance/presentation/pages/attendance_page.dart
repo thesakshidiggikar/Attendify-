@@ -465,11 +465,18 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
           return;
         }
 
-        String errorMsg = 'Face Not Recognized';
+        String errorMsg = 'System Error - Try again later';
         final errStr = e.toString().toLowerCase();
+        
         if (errStr.contains('exception:')) {
           errorMsg = e.toString().split('exception:').last.trim();
-        } else if (errStr.contains('not recognized') || errStr.contains('no match') || errStr.contains('unknown')) {
+          // Filter out generic status code errors to be more human-readable
+          if (errorMsg.toLowerCase().contains('failed to mark attendance:')) {
+            errorMsg = 'System Error - Please contact administrator';
+          }
+        }
+        
+        if (errStr.contains('not recognized') || errStr.contains('no match') || errStr.contains('unknown')) {
           errorMsg = 'Face Not Recognized';
         } else if (errStr.contains('network') || errStr.contains('timeout')) {
           errorMsg = 'Low Network - Please check connection';
