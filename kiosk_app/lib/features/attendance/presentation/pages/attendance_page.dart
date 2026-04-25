@@ -1053,13 +1053,6 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
                                     fontSize: 14,
                                   ),
                                 ),
-                                Text(
-                                  log['user_id'] ?? '',
-                                  style: TextStyle(
-                                    color: Colors.white.withOpacity(0.4),
-                                    fontSize: 11,
-                                  ),
-                                ),
                               ],
                             ),
                           ),
