@@ -17,20 +17,29 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         // Fetch employees and today's attendance records in parallel
         final results = await Future.wait([
           dashboardRepository.fetchAllEmployees(),
-          dashboardRepository.fetchTodayPresentUserIds(),
+          dashboardRepository.fetchTodayAttendanceRecords(),
         ]);
         
         final employees = results[0] as List<Employee>;
-        final presentIds = results[1] as List<String>;
+        final attendanceRecords = results[1] as List<Map<String, dynamic>>;
         
-        print('DEBUG: Present today IDs from kiosk: $presentIds');
+        print('DEBUG: Attendance records found today: ${attendanceRecords.length}');
 
         // Cross-reference: mark each employee as Present or Absent based on real records
         final enrichedEmployees = employees.map((emp) {
-          final isPresent = presentIds.any((id) =>
-            id.toLowerCase() == emp.cognitoUserId.toLowerCase() ||
-            id.toLowerCase() == emp.username.toLowerCase()
+          // Find if this student has a record in today's attendance data
+          final record = attendanceRecords.cast<Map<String, dynamic>?>().firstWhere(
+            (r) => 
+              r?['user_id']?.toString().toLowerCase() == emp.cognitoUserId.toLowerCase() ||
+              r?['user_id']?.toString().toLowerCase() == emp.username.toLowerCase() ||
+              r?['username']?.toString().toLowerCase() == emp.cognitoUserId.toLowerCase() ||
+              r?['username']?.toString().toLowerCase() == emp.username.toLowerCase(),
+            orElse: () => null,
           );
+
+          final isPresent = record != null;
+          final time = record?['timestamp']?.toString();
+
           return Employee(
             username: emp.username,
             email: emp.email,
@@ -39,14 +48,21 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
             faceId: emp.faceId,
             cognitoUserId: emp.cognitoUserId,
             attendanceStatus: isPresent ? 'Present' : 'Absent',
+            attendanceTime: time,
           );
         }).toList();
+
+        // Sort: show present students first, then by name
+        enrichedEmployees.sort((a, b) {
+           if (a.attendanceStatus == b.attendanceStatus) {
+             return a.username.compareTo(b.username);
+           }
+           return a.attendanceStatus == 'Present' ? -1 : 1;
+        });
 
         final int present = enrichedEmployees.where((e) => e.attendanceStatus == 'Present').length;
         final int absent = enrichedEmployees.where((e) => e.attendanceStatus == 'Absent').length;
 
-        print('DEBUG: Cross-referenced → Present: $present, Absent: $absent');
-        
         emit(DashboardStatsLoadSuccess(
           totalStudents: employees.length, 
           presentToday: present, 

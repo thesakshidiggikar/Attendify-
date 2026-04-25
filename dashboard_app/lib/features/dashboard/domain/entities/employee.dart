@@ -8,6 +8,7 @@ class Employee extends Equatable {
   final String faceId;
   final String cognitoUserId;
   final String attendanceStatus;
+  final String? attendanceTime;
 
   const Employee({
     required this.username,
@@ -16,7 +17,8 @@ class Employee extends Equatable {
     required this.department,
     required this.faceId,
     required this.cognitoUserId,
-    this.attendanceStatus = 'Not Marked',
+    this.attendanceStatus = 'Absent',
+    this.attendanceTime,
   });
 
   @override
@@ -28,5 +30,6 @@ class Employee extends Equatable {
         faceId,
         cognitoUserId,
         attendanceStatus,
+        attendanceTime,
       ];
 }

@@ -23,7 +23,7 @@ abstract class DashboardRepository {
 
   Future<Map<String, dynamic>> fetchAttendanceAnalytics();
 
-  Future<List<String>> fetchTodayPresentUserIds();
+  Future<List<Map<String, dynamic>>> fetchTodayAttendanceRecords();
 
   Future<void> deleteEmployee(String username);
 }

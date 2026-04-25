@@ -23,13 +23,15 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> with SingleTick
   final TextEditingController _searchController = TextEditingController();
   Timer? _refreshTimer;
   bool _isRefreshing = false;
+  int _currentPage = 0;
+  static const int _itemsPerPage = 10;
 
   @override
   void initState() {
     super.initState();
     context.read<DashboardBloc>().add(FetchDashboardStatsRequested());
-    // Auto-refresh every 30 seconds to pick up Kiosk attendance in real-time
-    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    // Auto-refresh every 15 seconds for real-time responsiveness
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       _triggerRefresh();
     });
   }
@@ -300,77 +302,199 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> with SingleTick
   }
 
   Widget _buildOverviewSection() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(40),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-                      BlocBuilder<DashboardBloc, DashboardState>(
-                        builder: (context, state) {
-                          if (state is DashboardStatsLoadInProgress || state is DashboardInitial) {
-                            return const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator(color: Color(AppConstants.primaryColor))));
-                          }
-                          
-                          int total = 0;
-                          int present = 0;
-                          int absent = 0;
-                          
-                          if (state is DashboardStatsLoadSuccess) {
-                            total = state.totalStudents;
-                            present = state.presentToday;
-                            absent = state.absentToday;
-                          } else if (state is EmployeesLoadSuccess) {
-                            total = state.employees.length;
-                            present = 0; 
-                            absent = total;
-                          } else if (state is EmployeeDeleteSuccess) {
-                            total = state.employees.length;
-                            present = 0;
-                            absent = total;
-                          } else if (state is DashboardStatsLoadFailure) {
-                            return Center(child: Padding(padding: const EdgeInsets.all(20), child: Text('Failed to connect to AWS Database: ${state.error}', style: const TextStyle(color: Colors.red))));
-                          }
+    return BlocBuilder<DashboardBloc, DashboardState>(
+      builder: (context, state) {
+        if (state is DashboardStatsLoadInProgress || state is DashboardInitial) {
+          return const Center(child: CircularProgressIndicator(color: Color(AppConstants.primaryColor)));
+        }
 
-                          return Row(
-                            children: [
-                              Expanded(child: _StatCard(title: 'Total Students', value: '$total', icon: Icons.people_rounded, color: Colors.indigoAccent)),
-                              const SizedBox(width: 24),
-                              Expanded(child: _StatCard(title: 'Present Today', value: '$present', icon: Icons.check_circle_rounded, color: Colors.green)),
-                              const SizedBox(width: 24),
-                              Expanded(child: _StatCard(title: 'Absent Today', value: '$absent', icon: Icons.cancel_rounded, color: Colors.redAccent)),
-                            ],
-                          );
-                        },
-                      ), const SizedBox(height: 48),
-          const Text(
-            'Quick Actions',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(AppConstants.textPrimary)),
-          ),
-          const SizedBox(height: 24),
-          Row(
+        int totalCount = 0;
+        int presentCount = 0;
+        int absentCount = 0;
+        List<Employee> allStudents = [];
+
+        if (state is DashboardStatsLoadSuccess) {
+          totalCount = state.totalStudents;
+          presentCount = state.presentToday;
+          absentCount = state.absentToday;
+          allStudents = state.employees;
+        }
+
+        final startIndex = _currentPage * _itemsPerPage;
+        final pagedStudents = allStudents.skip(startIndex).take(_itemsPerPage).toList();
+        final maxPages = (allStudents.length / _itemsPerPage).ceil();
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _QuickActionCard(
-                title: 'Mark Attendance',
-                icon: Icons.edit_calendar_rounded,
-                onTap: () => setState(() => selectedIndex = 3),
+              // Stats Cards
+              Row(
+                children: [
+                   Expanded(child: _StatCard(title: 'Total Students', value: '$totalCount', icon: Icons.people_rounded, color: Colors.indigoAccent)),
+                   const SizedBox(width: 24),
+                   Expanded(child: _StatCard(title: 'Present Today', value: '$presentCount', icon: Icons.check_circle_rounded, color: Colors.green)),
+                   const SizedBox(width: 24),
+                   Expanded(child: _StatCard(title: 'Absent Today', value: '$absentCount', icon: Icons.cancel_rounded, color: Colors.redAccent)),
+                ],
               ),
-              const SizedBox(width: 24),
-              _QuickActionCard(
-                title: 'Add Student',
-                icon: Icons.person_add_rounded,
-                onTap: () => setState(() => selectedIndex = 5),
+              
+              const SizedBox(height: 48),
+              
+              // Attendance Table Header
+              Row(
+                children: [
+                  const Text(
+                    'Real-time Attendance Log',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(AppConstants.textPrimary)),
+                  ),
+                  const Spacer(),
+                  // Pagination Controls
+                  if (maxPages > 1) ...[
+                    IconButton(
+                      icon: const Icon(Icons.chevron_left_rounded),
+                      onPressed: _currentPage > 0 ? () => setState(() => _currentPage--) : null,
+                    ),
+                    Text(
+                      'Page ${_currentPage + 1} of $maxPages',
+                      style: const TextStyle(fontWeight: FontWeight.w600, color: Color(AppConstants.textSecondary)),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.chevron_right_rounded),
+                      onPressed: _currentPage < maxPages - 1 ? () => setState(() => _currentPage++) : null,
+                    ),
+                  ],
+                ],
               ),
-              const SizedBox(width: 24),
-              _QuickActionCard(
-                title: 'View Analytics',
-                icon: Icons.insights_rounded,
-                onTap: () => setState(() => selectedIndex = 2),
+              
+              const SizedBox(height: 24),
+              
+              // Table
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20, offset: const Offset(0, 10)),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: DataTable(
+                    headingRowColor: MaterialStateProperty.all(const Color(AppConstants.backgroundColor).withOpacity(0.5)),
+                    horizontalMargin: 24,
+                    columnSpacing: 40,
+                    dataRowHeight: 64,
+                    columns: const [
+                      DataColumn(label: Text('PRN / ID', style: TextStyle(fontWeight: FontWeight.bold))),
+                      DataColumn(label: Text('STUDENT NAME', style: TextStyle(fontWeight: FontWeight.bold))),
+                      DataColumn(label: Text('DEPARTMENT', style: TextStyle(fontWeight: FontWeight.bold))),
+                      DataColumn(label: Text('STATUS', style: TextStyle(fontWeight: FontWeight.bold))),
+                      DataColumn(label: Text('TIME (IST)', style: TextStyle(fontWeight: FontWeight.bold))),
+                    ],
+                    rows: pagedStudents.map((emp) {
+                      return DataRow(
+                        cells: [
+                          DataCell(Text(emp.username, style: const TextStyle(fontWeight: FontWeight.w600))),
+                          DataCell(Text(emp.username)), // In this system username often acts as name too
+                          DataCell(Text(emp.department)),
+                          DataCell(_buildStatusBadge(emp.attendanceStatus)),
+                          DataCell(Text(_formatTimestamp(emp.attendanceTime))),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                ),
               ),
+              
+              const SizedBox(height: 48),
+
+              const Text(
+                'Quick Actions',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(AppConstants.textPrimary)),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  _QuickActionCard(
+                    title: 'Mark Attendance',
+                    icon: Icons.edit_calendar_rounded,
+                    onTap: () => setState(() => selectedIndex = 3),
+                  ),
+                  const SizedBox(width: 24),
+                  _QuickActionCard(
+                    title: 'Add Student',
+                    icon: Icons.person_add_rounded,
+                    onTap: () => setState(() => selectedIndex = 5),
+                  ),
+                  const SizedBox(width: 24),
+                  _QuickActionCard(
+                    title: 'View Analytics',
+                    icon: Icons.insights_rounded,
+                    onTap: () => setState(() => selectedIndex = 2),
+                  ),
+                ],
+              )
             ],
-          )
-        ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatusBadge(String status) {
+    Color color;
+    Color bgColor;
+
+    switch (status.toLowerCase()) {
+      case 'present':
+        color = const Color(0xFF10B981); // Emerald
+        bgColor = const Color(0xFF10B981).withOpacity(0.12);
+        break;
+      case 'late':
+        color = const Color(0xFFF59E0B); // Amber
+        bgColor = const Color(0xFFF59E0B).withOpacity(0.12);
+        break;
+      case 'absent':
+        color = const Color(0xFFEF4444); // Rose
+        bgColor = const Color(0xFFEF4444).withOpacity(0.12);
+        break;
+      default:
+        color = Colors.grey;
+        bgColor = Colors.grey.withOpacity(0.1);
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Text(
+        status.toUpperCase(),
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.5,
+        ),
       ),
     );
+  }
+
+  String _formatTimestamp(String? timestamp) {
+    if (timestamp == null || timestamp.isEmpty) return '--:--';
+    try {
+      final dt = DateTime.parse(timestamp).toUtc().add(const Duration(hours: 5, minutes: 30));
+      final hour = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
+      final period = dt.hour >= 12 ? 'PM' : 'AM';
+      return '${hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')} $period';
+    } catch (_) {
+      return timestamp;
+    }
   }
 
   Widget _buildStudentsSection() {

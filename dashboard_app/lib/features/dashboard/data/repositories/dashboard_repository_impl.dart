@@ -151,7 +151,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
   }
 
   @override
-  Future<List<String>> fetchTodayPresentUserIds() async {
+  Future<List<Map<String, dynamic>>> fetchTodayAttendanceRecords() async {
     try {
       final resp = await http.get(
         Uri.parse('$apiBaseUrl/recent-attendance'),
@@ -175,13 +175,9 @@ class DashboardRepositoryImpl implements DashboardRepository {
         records = bodyData;
       }
 
-      // Return list of user IDs who have been marked present today
-      return records
-          .map<String>((e) => (e['user_id'] ?? e['username'] ?? '').toString())
-          .where((id) => id.isNotEmpty)
-          .toList();
+      return records.map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e)).toList();
     } catch (e) {
-      print('DEBUG: fetchTodayPresentUserIds error: $e');
+      print('DEBUG: fetchTodayAttendanceRecords error: $e');
       return [];
     }
   }
