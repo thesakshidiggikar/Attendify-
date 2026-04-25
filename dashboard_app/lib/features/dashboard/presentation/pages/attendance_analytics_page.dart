@@ -522,43 +522,70 @@ class _AttendanceDistributionPie extends StatelessWidget {
   Widget build(BuildContext context) {
     if (total == 0) return const Center(child: Text('No data available'));
 
+    final presentPerc = (present / total * 100).toStringAsFixed(1);
+
     return Column(
       children: [
         Expanded(
-          child: PieChart(
-            PieChartData(
-              sectionsSpace: 0,
-              centerSpaceRadius: 55,
-              sections: [
-                PieChartSectionData(
-                  color: const Color(AppConstants.primaryColor),
-                  value: present.toDouble(),
-                  title: '',
-                  radius: 20,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              PieChart(
+                PieChartData(
+                  sectionsSpace: 4,
+                  centerSpaceRadius: 70,
+                  sections: [
+                    PieChartSectionData(
+                      color: const Color(0xFF6366F1),
+                      value: present.toDouble(),
+                      title: '',
+                      radius: 24,
+                      badgeWidget: _buildPercentageBadge('$presentPerc%'),
+                      badgePositionPercentageOffset: 1.4,
+                    ),
+                    PieChartSectionData(
+                      color: const Color(0xFFF43F5E).withOpacity(0.15),
+                      value: absent.toDouble(),
+                      title: '',
+                      radius: 18,
+                    ),
+                  ],
                 ),
-                PieChartSectionData(
-                  color: Colors.redAccent.withOpacity(0.2),
-                  value: absent.toDouble(),
-                  title: '',
-                  radius: 15,
-                ),
-              ],
-            ),
+              ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                   Text('$present', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
+                   const Text('PRESENT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8), letterSpacing: 1.5)),
+                ],
+              )
+            ],
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 48),
         _buildLegend(),
       ],
+    );
+  }
+
+  Widget _buildPercentageBadge(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
     );
   }
 
   Widget _buildLegend() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        _LegendItem(color: const Color(AppConstants.primaryColor), label: 'Present'),
-        const SizedBox(width: 24),
-        _LegendItem(color: Colors.redAccent.withOpacity(0.2), label: 'Absent'),
+      children: const [
+        _LegendItem(color: Color(0xFF6366F1), label: 'Active Registry'),
+        SizedBox(width: 32),
+        _LegendItem(color: Color(0xFFF43F5E), label: 'Absent/Risk'),
       ],
     );
   }
@@ -593,49 +620,87 @@ class _DepartmentBarChart extends StatelessWidget {
 
     return BarChart(
       BarChartData(
-        alignment: BarChartAlignment.spaceAround,
+        alignment: BarChartAlignment.spaceEvenly,
         maxY: 100,
-        barTouchData: BarTouchData(enabled: false),
+        barTouchData: BarTouchData(
+          enabled: true,
+          touchTooltipData: BarTouchTooltipData(
+            tooltipBgColor: const Color(0xFF1E293B),
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              return BarTooltipItem(
+                '${depts[groupIndex]}\n${rod.toY.toInt()}%',
+                const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+              );
+            },
+          ),
+        ),
         titlesData: FlTitlesData(
           show: true,
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
+              reservedSize: 40,
               getTitlesWidget: (value, meta) {
                 if (value.toInt() < depts.length) {
                   return SideTitleWidget(
                     meta: meta,
-                    child: Text(depts[value.toInt()], style: const TextStyle(color: Colors.grey, fontSize: 10)),
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Text(
+                        depts[value.toInt()].toUpperCase(),
+                        style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                      ),
+                    ),
                   );
                 }
                 return const SizedBox();
               },
             ),
           ),
-          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              interval: 25,
+              reservedSize: 40,
+              getTitlesWidget: (val, meta) => Text('${val.toInt()}%', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.bold)),
+            ),
+          ),
           rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
-        gridData: const FlGridData(show: false),
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: 25,
+          getDrawingHorizontalLine: (value) => FlLine(color: Colors.black.withOpacity(0.03), strokeWidth: 1),
+        ),
         borderData: FlBorderData(show: false),
         barGroups: List.generate(depts.length, (i) {
           final percentage = deptStats[depts[i]] ?? 0;
-          return _makeGroupData(i, percentage, const Color(AppConstants.primaryColor));
+          return _makeGroupData(i, percentage);
         }),
       ),
     );
   }
 
-  BarChartGroupData _makeGroupData(int x, double y, Color color) {
+  BarChartGroupData _makeGroupData(int x, double y) {
     return BarChartGroupData(
       x: x,
       barRods: [
         BarChartRodData(
           toY: y,
-          color: color,
-          width: 16,
-          borderRadius: BorderRadius.circular(4),
-          backDrawRodData: BackgroundBarChartRodData(show: true, toY: 100, color: Colors.grey.withOpacity(0.05)),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF6366F1), Color(0xFF818CF8)],
+            begin: Alignment.bottomCenter,
+            end: Alignment.topCenter,
+          ),
+          width: 28,
+          borderRadius: const BorderRadius.only(topLeft: Radius.circular(8), topRight: Radius.circular(8)),
+          backDrawRodData: BackgroundBarChartRodData(
+            show: true, 
+            toY: 100, 
+            color: const Color(0xFFF1F5F9),
+          ),
         ),
       ],
     );
