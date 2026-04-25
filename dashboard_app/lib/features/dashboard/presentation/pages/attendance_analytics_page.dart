@@ -16,17 +16,19 @@ class AttendanceAnalyticsPage extends StatefulWidget {
 
 class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
 
-  @override
-  void initState() {
-    super.initState();
-    context.read<DashboardBloc>().add(FetchDashboardStatsRequested());
-  }
-
   String _selectedView = 'Daily';
   final List<String> _views = ['Daily', 'Weekly', 'Monthly'];
 
   String _displayMode = 'Overview';
   final List<String> _displayModes = ['Overview', 'Graphs', 'Distribution', 'Activity Log'];
+
+  String _currentSort = 'Time Descending';
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<DashboardBloc>().add(FetchDashboardStatsRequested());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -200,6 +202,18 @@ class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
   }
 
   Widget _buildBodyContent(DashboardStatsLoadSuccess state, bool isCompact) {
+    var sortedEmployees = List<Employee>.from(state.employees);
+    if (_displayMode == 'Activity Log') {
+      if (_currentSort == 'Alphabetical') {
+        sortedEmployees.sort((a, b) => a.username.compareTo(b.username));
+      } else if (_currentSort == 'Department') {
+        sortedEmployees.sort((a, b) => a.department.compareTo(b.department));
+      } else if (_currentSort == 'Time Ascending') {
+        sortedEmployees.sort((a, b) => (a.attendanceTime ?? '').compareTo(b.attendanceTime ?? ''));
+      }
+      // Default is essentially descending by date or original order
+    }
+
     final deptStats = _calculateDeptStats(state.employees);
     switch (_displayMode) {
       case 'Graphs':
@@ -224,8 +238,9 @@ class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
         return _buildModernSection(
           key: const ValueKey('activity'),
           title: 'High-Density Audit Log',
-          child: const _RecentActivityList(isFullView: true),
+          child: _RecentActivityList(isFullView: true, employees: sortedEmployees),
           height: 700,
+          showSort: true,
         );
       default:
         return _buildModernSection(
@@ -237,7 +252,7 @@ class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
     }
   }
 
-  Widget _buildModernSection({required String title, required Widget child, required double height, Key? key}) {
+  Widget _buildModernSection({required String title, required Widget child, required double height, bool showSort = false, Key? key}) {
     return Container(
       key: key,
       height: height,
@@ -259,11 +274,69 @@ class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
               const SizedBox(width: 16),
               Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
               const Spacer(),
+              if (showSort) _buildSortDropdown(),
+              const SizedBox(width: 12),
               _buildViewToggle(false), // Reused but styled
             ],
           ),
           const SizedBox(height: 40),
           Expanded(child: child),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSortDropdown() {
+    return PopupMenuButton<String>(
+      onSelected: (val) => setState(() => _currentSort = val),
+      tooltip: 'Sort Options',
+      offset: const Offset(0, 45),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 20,
+      shadowColor: Colors.black26,
+      itemBuilder: (ctx) => [
+        const PopupMenuItem(enabled: false, child: Text('Sort by', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 1))),
+        _buildSortItem('Time Descending', Icons.timer_rounded),
+        _buildSortItem('Time Ascending', Icons.timer_outlined),
+        _buildSortItem('Alphabetical', Icons.sort_by_alpha_rounded),
+        _buildSortItem('Department', Icons.business_rounded),
+      ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.swap_vert_rounded, size: 16, color: Color(0xFF64748B)),
+            const SizedBox(width: 8),
+            Text(
+              _currentSort,
+              style: const TextStyle(color: Color(0xFF1E293B), fontSize: 12, fontWeight: FontWeight.w800),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  PopupMenuItem<String> _buildSortItem(String label, IconData icon) {
+    final isSelected = _currentSort == label;
+    return PopupMenuItem(
+      value: label,
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: isSelected ? const Color(0xFF6366F1) : const Color(0xFF64748B)),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? const Color(0xFF1E293B) : const Color(0xFF64748B),
+              fontWeight: isSelected ? FontWeight.w900 : FontWeight.w500,
+              fontSize: 13,
+            ),
+          ),
         ],
       ),
     );
@@ -709,14 +782,17 @@ class _DepartmentBarChart extends StatelessWidget {
 
 class _RecentActivityList extends StatelessWidget {
   final bool isFullView;
-  const _RecentActivityList({this.isFullView = false});
+  final List<Employee>? employees;
+  const _RecentActivityList({this.isFullView = false, this.employees});
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<DashboardBloc, DashboardState>(
       builder: (context, state) {
-        if (state is DashboardStatsLoadSuccess) {
-          final users = isFullView ? state.employees : state.employees.take(5).toList();
+        if (state is DashboardStatsLoadSuccess || employees != null) {
+          final sourceUsers = employees ?? (state as DashboardStatsLoadSuccess).employees;
+          final users = isFullView ? sourceUsers : sourceUsers.take(5).toList();
+          
           if (users.isEmpty) return const Center(child: Text('No recent activity'));
           
           return ListView.separated(
@@ -733,29 +809,34 @@ class _RecentActivityList extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       radius: isFullView ? 20 : 16,
-                      backgroundColor: (isPresent ? const Color(AppConstants.accentColor) : Colors.redAccent).withOpacity(0.1),
-                      child: Text(user.username.isNotEmpty ? user.username[0] : '?', style: TextStyle(fontSize: isFullView ? 14 : 12, fontWeight: FontWeight.bold, color: isPresent ? const Color(AppConstants.accentColor) : Colors.redAccent)),
+                      backgroundColor: (isPresent ? const Color(0xFF10B981) : const Color(0xFFF43F5E)).withOpacity(0.1),
+                      child: Text(user.username.isNotEmpty ? user.username[0] : '?', style: TextStyle(fontSize: isFullView ? 14 : 12, fontWeight: FontWeight.bold, color: isPresent ? const Color(0xFF10B981) : const Color(0xFFF43F5E))),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(user.username, style: TextStyle(fontWeight: FontWeight.bold, fontSize: isFullView ? 15 : 13, color: const Color(AppConstants.textPrimary))),
+                          Text(user.username, style: TextStyle(fontWeight: FontWeight.bold, fontSize: isFullView ? 15 : 13, color: const Color(0xFF1E293B))),
                           const SizedBox(height: 2),
                           Row(
                             children: [
-                              Text(user.department, style: const TextStyle(fontSize: 10, color: Color(AppConstants.textSecondary))),
+                              Text(user.department, style: const TextStyle(fontSize: 10, color: Color(0xFF64748B))),
                               const SizedBox(width: 8),
                               Container(width: 2, height: 2, decoration: const BoxDecoration(color: Colors.grey, shape: BoxShape.circle)),
                               const SizedBox(width: 8),
-                              Text(isPresent ? 'Present Today' : 'Absent Today', style: TextStyle(fontSize: 11, color: isPresent ? const Color(AppConstants.accentColor) : Colors.redAccent.withOpacity(0.6))),
+                              Text(isPresent ? 'Present Today' : 'Absent Today', style: TextStyle(fontSize: 11, color: isPresent ? const Color(0xFF10B981) : const Color(0xFFF43F5E).withOpacity(0.6))),
                             ],
                           ),
                         ],
                       ),
                     ),
-                    Text('10:${20+i} AM', style: const TextStyle(fontSize: 11, color: Color(AppConstants.textSecondary))),
+                    Text(
+                      user.attendanceTime != null && user.attendanceTime!.isNotEmpty 
+                        ? user.attendanceTime!.split('T').last.substring(0, 5) 
+                        : '--:--', 
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                    ),
                     if (isFullView) ...[
                        const SizedBox(width: 16),
                        const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
