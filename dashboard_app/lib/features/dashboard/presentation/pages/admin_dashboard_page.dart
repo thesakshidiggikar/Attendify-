@@ -225,9 +225,14 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> with SingleTick
                      mainAxisAlignment: MainAxisAlignment.center,
                      crossAxisAlignment: CrossAxisAlignment.start,
                      children: [
-                       Text(
-                         'SESSION: ${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')} IST',
-                         style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: const Color(0xFF6366F1), letterSpacing: 1.5),
+                       Builder(
+                         builder: (context) {
+                           final ist = DateTime.now().toUtc().add(const Duration(hours: 5, minutes: 30));
+                           return Text(
+                             'SESSION: ${ist.hour}:${ist.minute.toString().padLeft(2, '0')} IST',
+                             style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF6366F1), letterSpacing: 1.5),
+                           );
+                         }
                        ),
                        const SizedBox(height: 4),
                        Text(

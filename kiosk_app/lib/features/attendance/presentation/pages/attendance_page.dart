@@ -412,10 +412,11 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
 
         if (isAlreadyMarked) {
           // Show amber "Already Marked" overlay and add to log in ORANGE
+          final nowIST = DateTime.now().toUtc().add(const Duration(hours: 5, minutes: 30));
           _recentLogs.insert(0, {
             'name': name,
             'user_id': userId ?? '',
-            'timestamp': DateTime.now().toIso8601String(),
+            'timestamp': nowIST.toIso8601String(),
             'is_already_marked': true,
           });
           if (_recentLogs.length > 10) _recentLogs = _recentLogs.sublist(0, 10);
@@ -429,12 +430,13 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
         } else {
           // Reset failed attempts on any real success
           _failedAttempts = 0;
+          final nowIST = DateTime.now().toUtc().add(const Duration(hours: 5, minutes: 30));
 
           // Add to local recent logs for fresh mark (GREEN)
           _recentLogs.insert(0, {
             'name': name,
             'user_id': userId ?? '',
-            'timestamp': DateTime.now().toIso8601String(),
+            'timestamp': nowIST.toIso8601String(),
             'is_already_marked': false,
           });
           if (_recentLogs.length > 10) _recentLogs = _recentLogs.sublist(0, 10);
