@@ -15,26 +15,29 @@
 
 ---
 
-## 📖 Table of Contents
+## Table of Contents
 
-- [System Capabilities](#-system-capabilities)
-- [Distributed Architecture](#-distributed-architecture)
-- [Repository Artifacts](#-repository-artifacts)
-- [Deployment & Provisioning](#-deployment--provisioning)
-- [Performance & Benchmarks](#-performance--benchmarks)
-- [Security & Compliance](#-security--compliance)
-- [Author Notes](#-author-notes)
+- [System Capabilities](#system-capabilities)
+- [Distributed Architecture](#distributed-architecture)
+- [Repository Artifacts](#repository-artifacts)
+- [Deployment & Provisioning](#deployment--provisioning)
+- [Performance & Benchmarks](#performance--benchmarks)
+- [Security & Compliance](#security--compliance)
+- [Author Notes](#author-notes)
 
 ---
 
-## ⚡ System Capabilities
+## System Capabilities
 
 ### 1. Edge-Optimized Kiosk Terminal (`kiosk_app`)
 Designed to run on commodity physical hardware, the Kiosk functions as the physical gateway to the ecosystem.
 - **Pre-Processing Inference:** Utilizes Google ML Kit Vision API to locally execute boundary, temporal, and spatial calculations. This mitigates unnecessary payload transmission to the cloud.
+- **Real-Time Environmental Contexting:** Actively performs luminance (NV21/BGRA) byte plane sampling at runtime to seamlessly guide the user out of high-glare or low-light scenarios before cloud transmission.
+- **Hardware Lifecycle Management:** Implements deeply integrated AppLifecycleState monitoring to elegantly pause and dispose of native camera streams when the host operating system triggers interruptions, memory constraints, or screen-locks.
 - **Biometric Anti-Spoofing:** Enforces custom temporal debouncing (requiring 2 sustained seconds of spatial stability) to prevent accidental or fraudulent triggers.
+- **Fault Tolerance & Network Resiliency:** Contains built-in HTTP socket bound monitoring to trap API disruptions. Translates low-level cloud errors or backend AWS 400/500 thresholds into clean, human-readable UI failures.
+- **Automated Local Telemetry:** Autonomously synchronizes its active "Today's Log" cache against Indian Standard Time (IST) geographic bounds to automatically refresh localized memory structures without administrative intervention.
 - **Stateless Operation:** Maintains an in-memory frame processing lock; the biometric payload is instantly purged from memory once the TLS transmission is finalized.
-- **Fault Tolerance:** Built-in network resilience, dynamic cooldown bounds, and automatic stream recovery following unexpected disconnects.
 
 ### 2. Administrative Dashboard (`dashboard_app`)
 A centralized web portal empowering administrators with real-time operational oversight.
@@ -45,7 +48,7 @@ A centralized web portal empowering administrators with real-time operational ov
 
 ---
 
-## 🏗 Distributed Architecture
+## Distributed Architecture
 
 The logical topology leverages edge compute for inference, minimizing latency and bandwidth, while offloading heavy biometric vector comparisons to horizontally scaling AWS services.
 
@@ -78,7 +81,7 @@ The logical topology leverages edge compute for inference, minimizing latency an
 
 ---
 
-## 📁 Repository Artifacts
+## Repository Artifacts
 
 To optimize developer ergonomics and accelerate enterprise deployment, the repository strictly segregates infrastructure operations from application logic.
 
@@ -102,7 +105,7 @@ FaceAttend-Flutter/
 
 ---
 
-## 🚀 Deployment & Provisioning
+## Deployment & Provisioning
 
 Due to the heavy reliance on cloud infrastructure, an automated or strictly guided provisioning phase is mandatory before compiling the Flutter artifacts.
 
@@ -137,20 +140,20 @@ flutter run
 
 ---
 
-## 📊 Performance & Benchmarks
+## Performance & Benchmarks
 
 The system was aggressively load-tested and analyzed to ensure mission-critical reliability under heavy concurrency. 
 
 | Dimension | Measured Value | Threshold | Status |
 |:---|:---|:---|:---|
-| **Round Trip Time (RTT)** | 1.6s – 2.1s | < 3.0s | ✅ Optimal |
-| **Edge Vision Latency** | ~250ms | < 400ms | ✅ Optimal |
-| **Telemetry Propagation** | ~400ms | < 1000ms| ✅ Optimal |
-| **System Uptime (Test)** | 99.9% over 8hr | 99% | ✅ Exceptional |
+| **Round Trip Time (RTT)** | 1.6s – 2.1s | < 3.0s | Optimal |
+| **Edge Vision Latency** | ~250ms | < 400ms | Optimal |
+| **Telemetry Propagation** | ~400ms | < 1000ms| Optimal |
+| **System Uptime (Test)** | 99.9% over 8hr | 99% | Exceptional |
 
 ---
 
-## 🔐 Security & Compliance
+## Security & Compliance
 
 Privacy and data integrity are deeply embedded at the architectural level.
 1. **Zero-Retention Inference:** The FaceAttend Kiosk operates on ephemeral memory limits. Captured biometric arrays are never cached locally on disk. 
@@ -160,7 +163,7 @@ Privacy and data integrity are deeply embedded at the architectural level.
 
 ---
 
-## 🎓 Author Notes
+## Author Notes
 
 **Sakshi Diggikar**  
 MCA Candidate — Dr. D.Y. Patil International University (DYPIU)  
