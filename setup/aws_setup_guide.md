@@ -64,8 +64,15 @@ All Lambda function code for this project is meant to be placed into the local `
 4. Click **Create function**.
 5. Choose **Author from scratch**.
 6. **Function details:**
-   - **Function name:** (e.g., `attendify_mark_attendance`, `attendify_login`, `attendify_register_employee`).
-   - **Runtime:** Select `Python 3.12` or `Python 3.11`.
+   - **Function name:** You must create functions matching these exact names:
+     - `get_all_employeesLambda`
+     - `user-service`
+     - `manual_attendanceLambda`
+     - `attendance_statsLambda`
+     - `delete_userLambda`
+     - `recent_attendanceLambda`
+     - `mark_attendanceLambda`
+   - **Runtime:** Select `Python 3.14` (or whatever your AWS region supports natively).
    - **Architecture:** Keep it as `x86_64` (default).
 7. Under **Permissions**, let it create a new role with basic Lambda permissions. *(You will need to extend this role's permissions to allow the Lambda to access DynamoDB and Rekognition from the IAM Console).*
 8. Click **Create function**.
