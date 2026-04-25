@@ -96,38 +96,181 @@ class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
                           ),
                           const SizedBox(width: 32),
                           // MINOR COLUMN: AUDIT & ALERTS
-                          Expanded(
-                            flex: 3,
-                            child: _buildBentoTile(
-                              title: 'AUDIT LOG',
-                              subtitle: 'Real-time synchronization stream',
-                              icon: Icons.receipt_long_rounded,
-                              child: const _RecentActivityList(isFullView: false),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+              return ListView(
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 40.0),
+                physics: const BouncingScrollPhysics(),
+                children: [
+                   _buildSupremeHeader(isCompact),
+                   const SizedBox(height: 48),
+                   _buildStatGrid(state, isCompact),
+                   const SizedBox(height: 40),
+                   _buildMainAnalyticsStage(state, isCompact),
+                   const SizedBox(height: 40),
+                   Row(
+                     crossAxisAlignment: CrossAxisAlignment.start,
+                     children: [
+                       Expanded(
+                         flex: 4,
+                         child: _buildSupremeModule(
+                           title: 'REGIONAL SYNC',
+                           subtitle: 'Departmental check-in health audit',
+                           icon: Icons.lan_rounded,
+                           child: SizedBox(height: 400, child: _DepartmentBarChart(deptStats: _calculateDeptStats(state.employees))),
+                         ),
+                       ),
+                       const SizedBox(width: 32),
+                       Expanded(
+                         flex: 3,
+                         child: _buildSupremeModule(
+                           title: 'REGISTRY COMPOSITION',
+                           subtitle: 'Live student population density',
+                           icon: Icons.donut_large_rounded,
+                           child: SizedBox(height: 400, child: _AttendanceDistributionPie(
+                             present: state.presentToday,
+                             absent: state.absentToday,
+                             total: state.totalStudents,
+                           )),
+                         ),
+                       ),
+                     ],
+                   ),
+                   const SizedBox(height: 40),
+                   _buildSupremeModule(
+                     title: 'CENTRAL AUDIT STREAM',
+                     subtitle: 'Real-time synchronization logs from regional terminals',
+                     icon: Icons.analytics_rounded,
+                     child: const _RecentActivityList(isFullView: true),
+                   ),
+                   const SizedBox(height: 60),
+                ],
               );
             }
-            return const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1)));
+            return const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1), strokeWidth: 3));
           },
         );
       },
     );
   }
 
-  Widget _buildBentoTile({required String title, required String subtitle, required IconData icon, required Widget child}) {
+  Widget _buildSupremeHeader(bool isCompact) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+             const Text('INTELLIGENCE COMMAND', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF6366F1), letterSpacing: 4)),
+             const SizedBox(height: 12),
+             Text('Fleet Performance Executive Overview', style: TextStyle(fontSize: isCompact ? 28 : 42, fontWeight: FontWeight.w900, color: const Color(0xFF1E293B), letterSpacing: -2)),
+             const SizedBox(height: 4),
+             const Text('Real-time synchronization with IST/Kolkata cloud nodes active.', style: TextStyle(color: Color(0xFF64748B), fontSize: 13, fontWeight: FontWeight.w500)),
+          ],
+        ),
+        const Spacer(),
+        _buildActionPill(Icons.sync_rounded, 'FORCE RE-SYNC', () => context.read<DashboardBloc>().add(FetchDashboardStatsRequested())),
+        const SizedBox(width: 16),
+        _buildActionPill(Icons.ios_share_rounded, 'GENERATE REPORT', () {}),
+      ],
+    );
+  }
+
+  Widget _buildActionPill(IconData icon, String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.black.withOpacity(0.06)),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: const Color(0xFF1E293B)),
+            const SizedBox(width: 12),
+            Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF1E293B), letterSpacing: 1)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatGrid(DashboardStatsLoadSuccess state, bool isCompact) {
+    return Row(
+      children: [
+        _buildSupremeStatCard('TOTAL REGISTRY', '${state.totalStudents}', Icons.groups_rounded, const Color(0xFF6366F1)),
+        const SizedBox(width: 24),
+        _buildSupremeStatCard('ACTIVE SESSIONS', '${state.presentToday}', Icons.sensors_rounded, const Color(0xFF10B981)),
+        const SizedBox(width: 24),
+        _buildSupremeStatCard('DEFICIT RECORDS', '${state.absentToday}', Icons.warning_rounded, const Color(0xFFF43F5E)),
+        const SizedBox(width: 24),
+        _buildSupremeStatCard('CLOUD LATENCY', '142ms', Icons.bolt_rounded, Colors.amber),
+      ],
+    );
+  }
+
+  Widget _buildSupremeStatCard(String label, String value, IconData icon, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(28),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: Colors.black.withOpacity(0.02)),
+          boxShadow: [
+            BoxShadow(color: color.withOpacity(0.03), blurRadius: 40, offset: const Offset(0, 10)),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: color.withOpacity(0.08), shape: BoxShape.circle),
+                  child: Icon(icon, color: color, size: 18),
+                ),
+                const Spacer(),
+                const Icon(Icons.north_east_rounded, size: 14, color: Color(0xFF94A3B8)),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8), letterSpacing: 1.5)),
+            const SizedBox(height: 4),
+            Text(value, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Color(0xFF1E293B), letterSpacing: -1)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMainAnalyticsStage(DashboardStatsLoadSuccess state, bool isCompact) {
+    return _buildSupremeModule(
+      title: 'ATTENDANCE VELOCITY',
+      subtitle: 'Real-time progression tracking across academic time-series',
+      icon: Icons.timeline_rounded,
+      child: SizedBox(
+        height: 400,
+        child: _AttendanceTrendChart(
+          view: _selectedView,
+          currentPercentage: state.totalStudents > 0 ? (state.presentToday/state.totalStudents*100) : 0,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSupremeModule({required String title, required String subtitle, required IconData icon, required Widget child}) {
     return Container(
-      padding: const EdgeInsets.all(28),
+      padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: Colors.black.withOpacity(0.03)),
+        border: Border.all(color: Colors.black.withOpacity(0.02)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.015), blurRadius: 40, offset: const Offset(0, 12)),
+          BoxShadow(color: Colors.black.withOpacity(0.015), blurRadius: 60, offset: const Offset(0, 20)),
         ],
       ),
       child: Column(
@@ -135,115 +278,26 @@ class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
         children: [
           Row(
             children: [
-              Container(
-                 padding: const EdgeInsets.all(8),
+               Container(
+                 padding: const EdgeInsets.all(12),
                  decoration: BoxDecoration(color: const Color(0xFF6366F1).withOpacity(0.08), shape: BoxShape.circle),
-                 child: Icon(icon, color: const Color(0xFF6366F1), size: 18),
-              ),
-              const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF1E293B), letterSpacing: 1)),
-                  Text(subtitle, style: const TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
-                ],
-              ),
-              const Spacer(),
-              if (title.contains('VELOCITY')) _buildViewToggle(true),
+                 child: Icon(icon, color: const Color(0xFF6366F1), size: 24),
+               ),
+               const SizedBox(width: 20),
+               Column(
+                 crossAxisAlignment: CrossAxisAlignment.start,
+                 children: [
+                   Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1E293B), letterSpacing: -0.5)),
+                   Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
+                 ],
+               ),
+               const Spacer(),
+               if (title.contains('VELOCITY')) _buildViewToggle(false),
             ],
           ),
-          const SizedBox(height: 32),
-          Expanded(child: child),
+          const SizedBox(height: 40),
+          child,
         ],
-      ),
-    );
-  }
-
-  Widget _buildAnalyticsHeader(bool isCompact) {
-    return Row(
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-             const Text('INTELLIGENCE ENGINE v2.0', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF6366F1), letterSpacing: 2)),
-             const SizedBox(height: 4),
-             Text('Fleet Performance Overview', style: TextStyle(fontSize: isCompact ? 24 : 36, fontWeight: FontWeight.w900, color: const Color(0xFF1E293B), letterSpacing: -1.5)),
-          ],
-        ),
-        const Spacer(),
-        if (!isCompact) ...[
-          _buildHeaderTool(Icons.refresh_rounded, 'SYNC LIVE'),
-          const SizedBox(width: 12),
-          _buildHeaderTool(Icons.cloud_download_rounded, 'EXPORT PROTOCOL'),
-        ]
-      ],
-    );
-  }
-
-  Widget _buildHeaderTool(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.black.withOpacity(0.05)),
-      ),
-      child: Row(
-        children: [
-           Icon(icon, size: 16, color: const Color(0xFF64748B)),
-           const SizedBox(width: 8),
-           Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF1E293B))),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMetricRow(DashboardStatsLoadSuccess state) {
-    return Row(
-      children: [
-        _buildExpandingCard('Total Registry', '${state.totalStudents}', Icons.groups_rounded, const Color(0xFF6366F1)),
-        const SizedBox(width: 24),
-        _buildExpandingCard('Active Today', '${state.presentToday}', Icons.how_to_reg_rounded, const Color(0xFF10B981)),
-        const SizedBox(width: 24),
-        _buildExpandingCard('Deficit/Absent', '${state.absentToday}', Icons.warning_amber_rounded, const Color(0xFFF43F5E)),
-        const SizedBox(width: 24),
-        _buildExpandingCard('System Health', 'OPTIMAL', Icons.bolt_rounded, Colors.amber),
-      ],
-    );
-  }
-
-  Widget _buildExpandingCard(String label, String value, IconData icon, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: color.withOpacity(0.1)),
-          boxShadow: [
-            BoxShadow(color: color.withOpacity(0.03), blurRadius: 40, offset: const Offset(0, 10)),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(16)),
-              child: Icon(icon, color: color, size: 24),
-            ),
-            const SizedBox(width: 24),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF94A3B8), letterSpacing: 0.5)),
-                  const SizedBox(height: 4),
-                  Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
