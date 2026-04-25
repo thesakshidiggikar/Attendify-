@@ -5,6 +5,7 @@ import '../widgets/holographic_scanner.dart';
 import '../widgets/attendance_success_overlay.dart';
 import '../widgets/attendance_failure_overlay.dart';
 import '../widgets/attendance_already_marked_overlay.dart';
+import '../widgets/attendance_system_paused_overlay.dart';
 import 'package:camera/camera.dart';
 import 'dart:convert';
 import 'dart:async';
@@ -41,6 +42,7 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
   bool _isProcessing = false;
   bool _isCooldown = false;
   DateTime _now = DateTime.now().toUtc().add(const Duration(hours: 5, minutes: 30));
+  late String _currentDayStr;
   Timer? _clockTimer;
   Timer? _webScanTimer;
 
@@ -54,6 +56,7 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
 
   // Pause / Resume
   bool _isPaused = false;
+  bool _isSystemPaused = false;
 
   // Rate limiting — block after 5 failed attempts per session
   static const int _maxFailedAttempts = 5;
@@ -83,8 +86,20 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
     _faceDetectorService = getFaceDetector();
     _faceDetectorService.initialize();
 
+    _currentDayStr = '${_now.year}-${_now.month.toString().padLeft(2, '0')}-${_now.day.toString().padLeft(2, '0')}';
+
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() => _now = DateTime.now().toUtc().add(const Duration(hours: 5, minutes: 30)));
+      if (mounted) {
+        final newNow = DateTime.now().toUtc().add(const Duration(hours: 5, minutes: 30));
+        final newDayStr = '${newNow.year}-${newNow.month.toString().padLeft(2, '0')}-${newNow.day.toString().padLeft(2, '0')}';
+        
+        if (newDayStr != _currentDayStr) {
+          _currentDayStr = newDayStr;
+          _fetchRecentLogs();
+        }
+        
+        setState(() => _now = newNow);
+      }
     });
 
     WidgetsBinding.instance.addObserver(this);
@@ -110,13 +125,25 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (_controller == null || !_controller!.value.isInitialized) return;
-
     if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+      if (mounted) {
+        setState(() {
+          _isSystemPaused = true;
+          _statusMessage = 'SYSTEM INTERRUPTED';
+        });
+      }
       _tryDisposeCamera();
     } else if (state == AppLifecycleState.resumed) {
-      _initCamera();
+      // We explicitly DO NOT auto-restart the camera. We wait for user input.
     }
+  }
+
+  void _recoverFromSystemPause() {
+    setState(() {
+      _isSystemPaused = false;
+      _statusMessage = 'RESTARTING CAMERA...';
+    });
+    _initCamera();
   }
 
   Future<void> _tryDisposeCamera() async {
@@ -469,7 +496,19 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
       final repo = AttendanceRepositoryImpl(AttendanceRemoteDataSource());
       final data = await repo.getRecentAttendance(machineId: _machineId);
       if (mounted) {
-        setState(() => _recentLogs = data.take(10).toList());
+        final todaysLogs = data.where((log) {
+          try {
+            final logTs = log['timestamp'] as String?;
+            if (logTs == null) return false;
+            final dt = DateTime.parse(logTs).toUtc().add(const Duration(hours: 5, minutes: 30));
+            final logDateStr = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+            return logDateStr == _currentDayStr;
+          } catch (_) {
+            return false;
+          }
+        }).toList();
+
+        setState(() => _recentLogs = todaysLogs.take(10).toList());
       }
     } catch (e) {
       debugPrint('Failed to fetch logs: $e');
@@ -552,6 +591,12 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
             AttendanceFailureOverlay(
               message: _failureMessage,
               onDismiss: _onOverlayDismissed,
+            ),
+
+          // System Paused Recovery Overlay
+          if (_isSystemPaused)
+            AttendanceSystemPausedOverlay(
+              onResume: _recoverFromSystemPause,
             ),
         ],
       ),
