@@ -180,6 +180,24 @@ class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
     );
   }
 
+  Widget _buildHeaderTool(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.black.withOpacity(0.05)),
+      ),
+      child: Row(
+        children: [
+           Icon(icon, size: 16, color: const Color(0xFF64748B)),
+           const SizedBox(width: 8),
+           Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF1E293B))),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMetricRow(DashboardStatsLoadSuccess state) {
     return Row(
       children: [
