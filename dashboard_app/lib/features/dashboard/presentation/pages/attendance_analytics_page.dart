@@ -698,7 +698,7 @@ class _DepartmentBarChart extends StatelessWidget {
         barTouchData: BarTouchData(
           enabled: true,
           touchTooltipData: BarTouchTooltipData(
-            tooltipBgColor: const Color(0xFF1E293B),
+            getTooltipColor: (group) => const Color(0xFF1E293B),
             getTooltipItem: (group, groupIndex, rod, rodIndex) {
               return BarTooltipItem(
                 '${depts[groupIndex]}\n${rod.toY.toInt()}%',
