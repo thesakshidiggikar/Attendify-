@@ -95,7 +95,14 @@ FaceAttend-Flutter/
 │       ├── auth/              # Terminal authentication
 │       └── attendance/        # Camera controllers, ML Kit integration
 │
-└── scripts/                   # Evaluation & Utility Scripts
+├── lambda/                    # Serverless Cloud Functions Source
+│   ├── attendify_login/       # Pre-written AWS Lambda source code
+│   └── ...                    # Target function names correspond directly to files
+│
+├── setup/                     # Enterprise Infrastructure Documentation
+│   └── aws_setup_guide.md     # Step-by-step cloud provisioning and deployment manual
+│
+└── TestCases/                 # Advanced Evaluation & Utility Scripts
     ├── generate_performance_graphs.py  # Render telemetry via matplotlib
     ├── brute_force_login.py            # Security & penetration testing
     └── cors_proxy.py                   # Custom HTTP relay
@@ -124,6 +131,11 @@ FaceAttend-Flutter/
 - **Flutter SDK**: `^3.7.0` (Stable branch)
 - **Local Toolchain**: Android SDK 36 (required for camera abstraction layers)
 - **Environment**: Configured AWS Infrastructure (API Gateway, IAM Roles, Rekognition Collections)
+
+### Cloud Infrastructure Initialization
+To ensure rapid and standardized deployment of the backend architecture, complete provisioning assets have been included in the repository:
+- **Comprehensive Setup Manual**: Operational guidelines for IAM configuration, Resource Provisioning, and deployment are located at `setup/aws_setup_guide.md`.
+- **Pre-Packaged Lambda Functions**: All serverless backend code is contained within the `lambda/` directory. Each function's executable code is provided in distinct architectural boundaries. Administrators simply copy the provided codebase into the AWS Management Console—ensuring the AWS Lambda function name identically matches the mapped file name for seamless execution.
 
 ### Environment Variable Injectors
 A `.env` schema must be established at the root of both `dashboard_app/` and `kiosk_app/`:
