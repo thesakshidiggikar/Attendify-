@@ -470,15 +470,21 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
         
         if (errStr.contains('exception:')) {
           errorMsg = e.toString().split('exception:').last.trim();
+          
+          final lowerMsg = errorMsg.toLowerCase();
           // Filter out generic status code errors to be more human-readable
-          if (errorMsg.toLowerCase().contains('failed to mark attendance:')) {
+          if (lowerMsg.contains('failed to mark attendance:')) {
             errorMsg = 'System Error - Please contact administrator';
+          } else if (lowerMsg.contains('invalidparameterexception') || lowerMsg.contains('no faces')) {
+            errorMsg = 'Face Not Clearly Visible';
+          } else if (errorMsg.length > 50) {
+            errorMsg = 'System Error - Please try again later';
           }
         }
         
         if (errStr.contains('not recognized') || errStr.contains('no match') || errStr.contains('unknown')) {
           errorMsg = 'Face Not Recognized';
-        } else if (errStr.contains('network') || errStr.contains('timeout')) {
+        } else if (errStr.contains('network') || errStr.contains('timeout') || errStr.contains('socket')) {
           errorMsg = 'Low Network - Please check connection';
         }
 
