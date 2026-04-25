@@ -14,6 +14,7 @@ class AttendanceAnalyticsPage extends StatefulWidget {
   
 }
 
+class _AttendanceAnalyticsPageState extends State<AttendanceAnalyticsPage> {
   String _selectedView = 'Daily';
   final List<String> _views = ['Daily', 'Weekly', 'Monthly'];
 
