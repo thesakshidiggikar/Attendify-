@@ -31,7 +31,7 @@ class AttendanceRemoteDataSource {
         'Accept': 'application/json',
       },
       body: jsonEncode(body),
-    );
+    ).timeout(const Duration(seconds: 15));
 
     print('DEBUG: mark_attendance status=${response.statusCode}');
     print('DEBUG: mark_attendance body=${response.body}');
@@ -96,7 +96,7 @@ class AttendanceRemoteDataSource {
         headers: {
           'Accept': 'application/json',
         },
-      );
+      ).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 

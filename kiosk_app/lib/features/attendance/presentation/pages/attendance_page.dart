@@ -244,6 +244,29 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
     }
     _lastProcessTime = now;
 
+    // ---- BRIGHTNESS CHECK ----
+    double avgBrightness = 0;
+    if (image.format.group == ImageFormatGroup.nv21 && image.planes.isNotEmpty) {
+      final bytes = image.planes[0].bytes;
+      int sum = 0;
+      int step = 20; // Sample every 20th pixel for performance
+      for (int i = 0; i < bytes.length; i += step) {
+         sum += bytes[i];
+      }
+      int count = bytes.length ~/ step;
+      if (count > 0) avgBrightness = sum / count;
+    } else if (image.format.group == ImageFormatGroup.bgra8888 && image.planes.isNotEmpty) {
+      final bytes = image.planes[0].bytes;
+      int sum = 0;
+      int step = 80; // 4 bytes per pixel, sample every 20th pixel
+      int count = bytes.length ~/ step;
+      for (int i = 0; i + 2 < bytes.length; i += step) {
+         sum += (bytes[i] + bytes[i+1] + bytes[i+2]) ~/ 3;
+      }
+      if (count > 0) avgBrightness = sum / count;
+    }
+    // -------------------------
+
     _isDetecting = true;
     try {
       final frontCamera = _cameras.firstWhere(
@@ -258,7 +281,7 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
       if (_isProcessing) return; // double check
 
       if (faces.isNotEmpty) {
-        debugPrint('DEBUG: Detected ${faces.length} faces');
+        debugPrint('DEBUG: Detected ${faces.length} faces (Brightness: ${avgBrightness.toStringAsFixed(1)})');
         if (_faceDetectedStartTime == null) {
           _faceDetectedStartTime = DateTime.now();
           setState(() => _statusMessage = 'FACE DETECTED — HOLD STILL');
@@ -279,8 +302,28 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
           setState(() {
             _faceDetectedStartTime = null;
             _scanProgress = 0.0;
-            _statusMessage = 'READY — SHOW YOUR FACE';
           });
+        }
+
+        // Contextual Environment Hint if no face is detected
+        if (avgBrightness > 0) {
+          if (avgBrightness < 45) {
+            if (mounted && _statusMessage != 'CAMERA NOT VISIBLE - TOO DARK') {
+              setState(() => _statusMessage = 'CAMERA NOT VISIBLE - TOO DARK');
+            }
+          } else if (avgBrightness > 210) {
+            if (mounted && _statusMessage != 'FACE NOT CLEARLY VISIBLE - TOO BRIGHT') {
+               setState(() => _statusMessage = 'FACE NOT CLEARLY VISIBLE - TOO BRIGHT');
+            }
+          } else {
+            if (mounted && _statusMessage != 'READY — SHOW YOUR FACE') {
+               setState(() => _statusMessage = 'READY — SHOW YOUR FACE');
+            }
+          }
+        } else {
+           if (mounted && _statusMessage != 'READY — SHOW YOUR FACE') {
+              setState(() => _statusMessage = 'READY — SHOW YOUR FACE');
+           }
         }
       }
     } catch (e) {
@@ -429,7 +472,7 @@ class _AttendancePageState extends State<AttendancePage> with TickerProviderStat
         } else if (errStr.contains('not recognized') || errStr.contains('no match') || errStr.contains('unknown')) {
           errorMsg = 'Face Not Recognized';
         } else if (errStr.contains('network') || errStr.contains('timeout')) {
-          errorMsg = 'Network Error';
+          errorMsg = 'Low Network - Please check connection';
         }
 
         setState(() {
