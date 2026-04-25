@@ -21,13 +21,29 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         ]);
         
         final employees = results[0] as List<Employee>;
-        final attendanceRecords = results[1] as List<Map<String, dynamic>>;
+        final rawRecords = results[1] as List<Map<String, dynamic>>;
         
-        print('DEBUG: Attendance records found today: ${attendanceRecords.length}');
+        // --- IST DATE FILTERING ---
+        final nowIST = DateTime.now().toUtc().add(const Duration(hours: 5, minutes: 30));
+        final todayStr = '${nowIST.year}-${nowIST.month.toString().padLeft(2, '0')}-${nowIST.day.toString().padLeft(2, '0')}';
+        
+        final attendanceRecords = rawRecords.where((r) {
+          try {
+            final ts = r['timestamp']?.toString();
+            if (ts == null) return false;
+            final dt = DateTime.parse(ts).toUtc().add(const Duration(hours: 5, minutes: 30));
+            final dateStr = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+            return dateStr == todayStr;
+          } catch (_) {
+            return false;
+          }
+        }).toList();
+        
+        print('DEBUG: Attendance records found for IST today ($todayStr): ${attendanceRecords.length}');
 
         // Cross-reference: mark each employee as Present or Absent based on real records
         final enrichedEmployees = employees.map((emp) {
-          // Find if this student has a record in today's attendance data
+          // Find if this student has a record in today's filtered attendance data
           final record = attendanceRecords.cast<Map<String, dynamic>?>().firstWhere(
             (r) => 
               r?['user_id']?.toString().toLowerCase() == emp.cognitoUserId.toLowerCase() ||

@@ -56,29 +56,28 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> with SingleTick
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(AppConstants.backgroundColor),
+      backgroundColor: const Color(0xFFF8FAFC),
       body: Row(
         children: [
           _buildPremiumSidebar(),
           Expanded(
-            child: Column(
-              children: [
-                _buildPremiumHeader(),
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.only(topLeft: Radius.circular(32)),
-                    child: Container(
-                      color: const Color(AppConstants.surfaceColor),
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 400),
-                        switchInCurve: Curves.easeOutCubic,
-                        switchOutCurve: Curves.easeInCubic,
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(40)),
+              ),
+              child: Column(
+                children: [
+                   _buildPremiumHeader(),
+                   Expanded(
+                     child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 500),
+                        switchInCurve: Curves.easeInOutCubic,
                         child: _buildContent(selectedIndex),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                     ),
+                   ),
+                ],
+              ),
             ),
           ),
         ],
@@ -324,120 +323,228 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> with SingleTick
         final pagedStudents = allStudents.skip(startIndex).take(_itemsPerPage).toList();
         final maxPages = (allStudents.length / _itemsPerPage).ceil();
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(40),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Stats Cards
-              Row(
-                children: [
-                   Expanded(child: _StatCard(title: 'Total Students', value: '$totalCount', icon: Icons.people_rounded, color: Colors.indigoAccent)),
-                   const SizedBox(width: 24),
-                   Expanded(child: _StatCard(title: 'Present Today', value: '$presentCount', icon: Icons.check_circle_rounded, color: Colors.green)),
-                   const SizedBox(width: 24),
-                   Expanded(child: _StatCard(title: 'Absent Today', value: '$absentCount', icon: Icons.cancel_rounded, color: Colors.redAccent)),
-                ],
-              ),
-              
-              const SizedBox(height: 48),
-              
-              // Attendance Table Header
-              Row(
-                children: [
-                  const Text(
-                    'Real-time Attendance Log',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(AppConstants.textPrimary)),
-                  ),
-                  const Spacer(),
-                  // Pagination Controls
-                  if (maxPages > 1) ...[
-                    IconButton(
-                      icon: const Icon(Icons.chevron_left_rounded),
-                      onPressed: _currentPage > 0 ? () => setState(() => _currentPage--) : null,
-                    ),
-                    Text(
-                      'Page ${_currentPage + 1} of $maxPages',
-                      style: const TextStyle(fontWeight: FontWeight.w600, color: Color(AppConstants.textSecondary)),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.chevron_right_rounded),
-                      onPressed: _currentPage < maxPages - 1 ? () => setState(() => _currentPage++) : null,
-                    ),
-                  ],
-                ],
-              ),
-              
-              const SizedBox(height: 24),
-              
-              // Table
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.grey.withOpacity(0.1)),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20, offset: const Offset(0, 10)),
+        return SelectionArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Stats Cards
+                Row(
+                  children: [
+                    Expanded(child: _StatCard(
+                      title: 'Total Students', 
+                      value: '$totalCount', 
+                      icon: Icons.people_group_rounded, 
+                      gradient: const [Color(0xFF6366F1), Color(0xFF818CF8)],
+                    )),
+                    const SizedBox(width: 24),
+                    Expanded(child: _StatCard(
+                      title: 'Present Today', 
+                      value: '$presentCount', 
+                      icon: Icons.fingerprint_rounded, 
+                      gradient: const [Color(0xFF10B981), Color(0xFF34D399)],
+                    )),
+                    const SizedBox(width: 24),
+                    Expanded(child: _StatCard(
+                      title: 'Absent Today', 
+                      value: '$absentCount', 
+                      icon: Icons.person_off_rounded, 
+                      gradient: const [Color(0xFFF43F5E), Color(0xFFFB7185)],
+                    )),
                   ],
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: DataTable(
-                    headingRowColor: MaterialStateProperty.all(const Color(AppConstants.backgroundColor).withOpacity(0.5)),
-                    horizontalMargin: 24,
-                    columnSpacing: 40,
-                    dataRowHeight: 64,
-                    columns: const [
-                      DataColumn(label: Text('PRN / ID', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('STUDENT NAME', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('DEPARTMENT', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('STATUS', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('TIME (IST)', style: TextStyle(fontWeight: FontWeight.bold))),
-                    ],
-                    rows: pagedStudents.map((emp) {
-                      return DataRow(
-                        cells: [
-                          DataCell(Text(emp.username, style: const TextStyle(fontWeight: FontWeight.w600))),
-                          DataCell(Text(emp.username)), // In this system username often acts as name too
-                          DataCell(Text(emp.department)),
-                          DataCell(_buildStatusBadge(emp.attendanceStatus)),
-                          DataCell(Text(_formatTimestamp(emp.attendanceTime))),
+                
+                const SizedBox(height: 40),
+                
+                // Attendance Table Header
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24)),
+                  ),
+                  child: Row(
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Daily Attendance Register',
+                            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Real-time updates from Kiosk Terminal',
+                            style: TextStyle(color: const Color(0xFF1E293B).withOpacity(0.5), fontSize: 13, fontWeight: FontWeight.w500),
+                          ),
                         ],
-                      );
-                    }).toList(),
+                      ),
+                      const Spacer(),
+                      // Pagination Controls
+                      if (maxPages > 1) 
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.black.withOpacity(0.05)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 14),
+                                visualDensity: VisualDensity.compact,
+                                onPressed: _currentPage > 0 ? () => setState(() => _currentPage--) : null,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${_currentPage + 1} / $maxPages',
+                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF1E293B)),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                                visualDensity: VisualDensity.compact,
+                                onPressed: _currentPage < maxPages - 1 ? () => setState(() => _currentPage++) : null,
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-              ),
-              
-              const SizedBox(height: 48),
-
-              const Text(
-                'Quick Actions',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(AppConstants.textPrimary)),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  _QuickActionCard(
-                    title: 'Mark Attendance',
-                    icon: Icons.edit_calendar_rounded,
-                    onTap: () => setState(() => selectedIndex = 3),
+                
+                // Table Body
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(24), bottomRight: Radius.circular(24)),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 40, offset: const Offset(0, 20)),
+                    ],
                   ),
-                  const SizedBox(width: 24),
-                  _QuickActionCard(
-                    title: 'Add Student',
-                    icon: Icons.person_add_rounded,
-                    onTap: () => setState(() => selectedIndex = 5),
+                  child: Theme(
+                    data: Theme.of(context).copyWith(
+                      dividerColor: Colors.black.withOpacity(0.03),
+                    ),
+                    child: DataTable(
+                      horizontalMargin: 24,
+                      columnSpacing: 24,
+                      dataRowHeight: 72,
+                      headingRowHeight: 0, // Hidden as we built custom header
+                      columns: const [
+                        DataColumn(label: SizedBox.shrink()),
+                        DataColumn(label: SizedBox.shrink()),
+                        DataColumn(label: SizedBox.shrink()),
+                        DataColumn(label: SizedBox.shrink()),
+                        DataColumn(label: SizedBox.shrink()),
+                      ],
+                      rows: pagedStudents.map((emp) {
+                        final isPresent = emp.attendanceStatus == 'Present';
+                        return DataRow(
+                          cells: [
+                            DataCell(
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF6366F1).withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Center(child: Icon(Icons.badge_rounded, color: Color(0xFF6366F1), size: 18)),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text('PRN ID', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                                      Text(emp.username, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            DataCell(
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('STUDENT NAME', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                                  Text(emp.username, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                                ],
+                              ),
+                            ),
+                            DataCell(
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('DEPARTMENT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                                  Text(emp.department, style: const TextStyle(color: Color(0xFF64748B), fontSize: 13, fontWeight: FontWeight.w500)),
+                                ],
+                              ),
+                            ),
+                            DataCell(Center(child: _buildStatusBadge(emp.attendanceStatus))),
+                            DataCell(
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  const Text('TIMESTAMP', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                                  Text(
+                                    _formatTimestamp(emp.attendanceTime),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800, 
+                                      fontSize: 13, 
+                                      color: isPresent ? const Color(0xFF10B981) : Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      }).toList(),
+                    ),
                   ),
-                  const SizedBox(width: 24),
-                  _QuickActionCard(
-                    title: 'View Analytics',
-                    icon: Icons.insights_rounded,
-                    onTap: () => setState(() => selectedIndex = 2),
-                  ),
-                ],
-              )
-            ],
+                ),
+                
+                const SizedBox(height: 40),
+  
+                const Text(
+                  'Quick Access',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    _QuickActionCard(
+                      title: 'Manual Mark',
+                      icon: Icons.history_edu_rounded,
+                      onTap: () => setState(() => selectedIndex = 3),
+                    ),
+                    const SizedBox(width: 20),
+                    _QuickActionCard(
+                      title: 'Enroll Student',
+                      icon: Icons.person_add_alt_rounded,
+                      onTap: () => setState(() => selectedIndex = 5),
+                    ),
+                    const SizedBox(width: 20),
+                    _QuickActionCard(
+                      title: 'Analytics Subsystem',
+                      icon: Icons.analytics_rounded,
+                      onTap: () => setState(() => selectedIndex = 2),
+                    ),
+                  ],
+                )
+              ],
+            ),
           ),
         );
       },
@@ -803,40 +910,48 @@ class _SidebarItemState extends State<_SidebarItem> {
   @override
   Widget build(BuildContext context) {
     final color = widget.isLogout 
-        ? Colors.redAccent 
-        : widget.isSelected ? const Color(AppConstants.primaryColor) : const Color(AppConstants.textSecondary);
+        ? const Color(0xFFF43F5E) 
+        : widget.isSelected ? const Color(0xFF6366F1) : const Color(0xFF64748B);
     
     final bgColor = widget.isSelected 
-        ? const Color(AppConstants.primaryLight).withOpacity(0.1) 
-        : isHovered ? Colors.grey.withOpacity(0.05) : Colors.transparent;
+        ? const Color(0xFF6366F1).withOpacity(0.08) 
+        : isHovered ? Colors.black.withOpacity(0.02) : Colors.transparent;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       child: MouseRegion(
         onEnter: (_) => setState(() => isHovered = true),
         onExit: (_) => setState(() => isHovered = false),
         child: InkWell(
           onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: bgColor,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14),
             ),
             child: Row(
               children: [
-                Icon(widget.icon, color: color, size: 24),
-                const SizedBox(width: 16),
+                Icon(widget.icon, color: color, size: 22),
+                const SizedBox(width: 14),
                 Text(
-                  widget.label,
-                  style: TextStyle(
-                    color: widget.isSelected ? const Color(AppConstants.primaryColor) : (widget.isLogout ? Colors.redAccent : const Color(AppConstants.textPrimary)),
-                    fontWeight: widget.isSelected ? FontWeight.bold : FontWeight.w500,
-                    fontSize: 16,
-                  ),
+                   widget.label,
+                   style: TextStyle(
+                     color: widget.isSelected ? const Color(0xFF1E293B) : (widget.isLogout ? const Color(0xFFF43F5E) : const Color(0xFF64748B)),
+                     fontWeight: widget.isSelected ? FontWeight.w800 : FontWeight.w600,
+                     fontSize: 14,
+                   ),
                 ),
+                if (widget.isSelected) ...[
+                   const Spacer(),
+                   Container(
+                     width: 6,
+                     height: 6,
+                     decoration: const BoxDecoration(color: Color(0xFF6366F1), shape: BoxShape.circle),
+                   ),
+                ],
               ],
             ),
           ),
@@ -850,9 +965,9 @@ class _StatCard extends StatelessWidget {
   final String title;
   final String value;
   final IconData icon;
-  final Color color;
+  final List<Color> gradient;
 
-  const _StatCard({required this.title, required this.value, required this.icon, required this.color});
+  const _StatCard({required this.title, required this.value, required this.icon, required this.gradient});
 
   @override
   Widget build(BuildContext context) {
@@ -860,28 +975,38 @@ class _StatCard extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.black.withOpacity(0.04)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10)),
+          BoxShadow(color: gradient.first.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 10)),
         ],
       ),
-      child: Row(
+      child: Stack(
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(icon, color: color, size: 32),
+          Positioned(
+            right: -10,
+            bottom: -10,
+            child: Icon(icon, color: gradient.first.withOpacity(0.05), size: 80),
           ),
-          const SizedBox(width: 24),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
             children: [
-              Text(title, style: const TextStyle(color: Color(AppConstants.textSecondary), fontSize: 16, fontWeight: FontWeight.w500)),
-              const SizedBox(height: 8),
-              Text(value, style: const TextStyle(color: Color(AppConstants.textPrimary), fontSize: 32, fontWeight: FontWeight.bold)),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: gradient, begin: Alignment.topLeft, end: Alignment.bottomRight),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(icon, color: Colors.white, size: 28),
+              ),
+              const SizedBox(width: 20),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: TextStyle(color: const Color(0xFF1E293B).withOpacity(0.5), fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+                  const SizedBox(height: 4),
+                  Text(value, style: const TextStyle(color: Color(0xFF1E293B), fontSize: 28, fontWeight: FontWeight.w900)),
+                ],
+              ),
             ],
           ),
         ],
@@ -902,23 +1027,35 @@ class _QuickActionCard extends StatelessWidget {
     return Expanded(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.withOpacity(0.1)),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.black.withOpacity(0.04)),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 20, offset: const Offset(0, 4)),
+            ],
           ),
           child: Column(
             children: [
-              Icon(icon, color: const Color(AppConstants.primaryColor), size: 32),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6366F1).withOpacity(0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: const Color(0xFF6366F1), size: 28),
+              ),
               const SizedBox(height: 16),
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w600, color: Color(AppConstants.textPrimary))),
+              const Text('ACTION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+              const SizedBox(height: 4),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF1E293B), fontSize: 13)),
             ],
           ),
         ),
-      ),
+       ),
     );
   }
 }
